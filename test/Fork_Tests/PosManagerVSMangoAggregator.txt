@@ -1,0 +1,116 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../Methods.sol";
+
+contract PosManagerVSMangoAggregator is Methods {
+
+    using SafeERC20 for IERC20;
+    /*
+    First checking the limit of aggregation in real case scenario.
+    How much DAI/USDC could be deposited into the 22-26 range?
+    forge test --fork-url=https://1rpc.io/eth --match-test testLimitsOfLForDeposits -vvv
+    */
+    function testLimitsOfLForDeposits() public {
+
+        int24 tl = -276326;
+        int24 tu = -276322;
+        address pool = 0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168;
+        address factory = IUniswapV3Pool(pool).factory();
+        universalAggregator = new UniversalAggregator(factory);
+        uint128 abstractL = 160_000_000e16;
+
+        dai = IERC20(IUniswapV3Pool(pool).token0());
+        usdc = IERC20(IUniswapV3Pool(pool).token1());
+
+        address uscdWhale = 0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa;
+        address daiWhale = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
+        vm.startPrank(daiWhale);
+        dai.safeTransfer(uscdWhale, dai.balanceOf(daiWhale));
+        vm.stopPrank();
+        
+        vm.startPrank(uscdWhale);
+        dai.approve(address(universalAggregator), 2**256-1);
+        usdc.approve(address(universalAggregator), 2**256-1);
+        (uint256 amount0, uint256 amount1) = universalAggregator.mintWithParams(
+            IUniswapV3Pool(pool).token0(),
+            IUniswapV3Pool(pool).token1(),
+            IUniswapV3Pool(pool).fee(),
+            tl,
+            tu,
+            abstractL
+        ); 
+        vm.stopPrank();
+        console.log("SUCCESS");
+        console.log(amount0);
+        console.log(amount1);
+    }
+
+    /*
+    forge test --fork-url=https://1rpc.io/eth --match-test testBtcPool -vvv
+    */
+    function testBtcPool() public {
+
+        int24 TL = 322378;
+        int24 TU = 352336;
+        address dai_btc = 0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599;
+        address pool = 0x391E8501b626C623d39474AfcA6f9e46c2686649;
+        address factory = IUniswapV3Pool(pool).factory();
+        IUniswapV3Pool(pool).slot0();
+        universalAggregator = new UniversalAggregator(factory);
+        usdc = IERC20(IUniswapV3Pool(pool).token0());
+        dai = IERC20(IUniswapV3Pool(pool).token1());
+        // getting wbtc and dai:
+        address daiWhale = 0x40ec5B33f54e0E8A33A975908C5BA1c14e5BbbDf;
+        address wbtcWhale = 0x5Ee5bf7ae06D1Be5997A1A72006FE6C607eC6DE8;
+        vm.startPrank(daiWhale);
+        dai.safeTransfer(wbtcWhale, dai.balanceOf(daiWhale));
+        vm.stopPrank();
+        vm.startPrank(wbtcWhale);
+        dai.approve(address(universalAggregator), 2**256-1);
+        usdc.approve(address(universalAggregator), 2**256-1);
+        uint128 abstractL = 0;
+        universalAggregator.mintWithParams(
+            IUniswapV3Pool(pool).token0(),
+            IUniswapV3Pool(pool).token1(),
+            IUniswapV3Pool(pool).fee(),
+            TL,
+            TU,
+            abstractL
+        ); 
+        vm.stopPrank();
+    }
+
+}
+
+/*
+1 wbtc:             100000000
+63895 dai:          63895000000000000000000
+aL                  4182234012391153
+
+proper:
+
+wbtcAMount :        71929918
+daiAmount  :        63894999999999995973526
+L          :        4182234012391153
+
+Realistic  : 150 volume
+wbtcAmount :        x
+daiAmount  :        90000000000000000000
+
+
+Loop strat:
+
+    ** At 55k -> Meaning tick is closer to tl(10k) because of this we pass 200e18 as a1 and a0 1e8
+* getLForAmounts(1e8, 200e18, sqrtP(55k)) -> 1486757353225
+* getAmountsForL(1486757353225) -> 30149, 200e18 !
+* Get dollar value for 30149. Deduct said amount to our a1 amount.
+* Calculate new L with 30149 and 200e18 - delta. 
+* swap exactIn said delta, then mint.
+
+    ** At 140k -> Meaning tick is closer to tu(200k)
+*
+
+
+
+*/
