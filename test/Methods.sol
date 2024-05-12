@@ -10,6 +10,7 @@ import "./Setup.sol";
 
 contract Methods is Setup {
 
+    using FullMath for uint256;
     using TickMath for int24;
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
@@ -19,35 +20,39 @@ contract Methods is Setup {
     function setUp() public override virtual {
         super.setUp();
         /*
-        * WBTC/DAI pool, depositing 4 wbtc + 210k DAI in 20k-300k range & 2 wbtc + x DAI in 10k - 250k range.
-        * WBTC/xSKIRK pool 1e8, 64k.
-        * WBTC/xSKIRK pool, will gradually get deposits.
-        */  
+        * Depositing liquidity into dai_usdc (1m, 1m)
+        * Depositin liquidity into dai_weth(3m, ~)
+
+        */ 
+        int24 lowerTick = -276327;
+        int24 upperTick = -276322;
         _depositLiquidity(
-            pool_wbtc_dai,
-            4e8,
-            64_000e18 * 4,
+            pool_dai_usdc,
+            1_000_000e18,
+            1_000_000e6,
             admin.addr,
-            329280,         // ~20k
-            356340          // ~300k
+            lowerTick,         // ~1
+            upperTick          // ~1
         );
+        lowerTick = -101200;      // 500 - 25k
+        upperTick = -62000;     // fee:500 must be divisable by 200 
         _depositLiquidity(
-            pool_wbtc_dai,
-            4e8,
-            64_000e18 * 4,
+            pool_dai_weth,
+            8_000_000e18,
+            2754e18,
             admin.addr,
-            322320,         // ~10k
-            354540          // ~250k
+            lowerTick,         // ~2200
+            upperTick          // ~3800
         );
 
-        (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_wbtc_xSkirk).slot0();
-        int24 tl = 322320;
-        int24 tu = 354540;
-        uint128 liquidity = LiquidityMath.getLiquidityForAmounts(sqrtP, tl.getSqrtRatioAtTick(), tu.getSqrtRatioAtTick(), 1e3, 2e18);
-        IUniswapV3Pool(pool_wbtc_xSkirk).mint(
+        (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+        int24 tl = 322200;
+        int24 tu = 352200;
+        uint128 liquidity = LiquidityMath.getLiquidityForAmounts(sqrtP, tl.getSqrtRatioAtTick(), tu.getSqrtRatioAtTick(), 9e13, 1e18);
+        IUniswapV3Pool(pool_weth_xSkirk).mint(
             alice.addr,
-            322320,
-            354540,
+            322200,
+            352200,
             liquidity,
             ""
         );
@@ -112,17 +117,30 @@ contract Methods is Setup {
         );
     }
 
+    function _shiftDAI_WETH_POOL(uint160 targetPrice) internal {
+        (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+        uint8 dir = targetPrice > sqrtP ? 2 : 1;
+
+        IUniswapV3Pool(pool_dai_weth).swap(
+            address(0xdead),
+            dir == 2 ? false : true,
+            2**96,
+            targetPrice,
+            ""
+        );
+    }
+
     /*
     * Arbitrage function for xSKIRK/WBTC pool in respect to WBTC/DAI price.
     */
-    function _balanceSkirkWbtcPool() internal {
+    function _balanceWeth_xSkirk_Pool() internal {
         uint248 target;
         uint8 dir;
         (target, dir) = __getAmountsToArb();
         if(dir != 3){
-        uint160 limit = _getSqrP(uint256(target) / (10 ** 18), 8, 18);
+        uint160 limit = _getQ96(uint256(target), 18, 18);
 
-        IUniswapV3Pool(pool_wbtc_xSkirk).swap(
+        IUniswapV3Pool(pool_weth_xSkirk).swap(
             address(0xdead),
             dir == 1 ? true : false,
             2**96,  // Overswap by non realistic amount to reach limit
@@ -133,20 +151,48 @@ contract Methods is Setup {
     }
 
     function __getAmountsToArb() internal view returns(uint248, uint8){
-        (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_wbtc_dai).slot0();
-        uint256 wbtcPriceInBase18 = _getPrice(sqrtP, 8, 18);
-        (sqrtP,,,,,,) = IUniswapV3Pool(pool_wbtc_xSkirk).slot0();
-        uint256 syntheticWbtcPriceInbase18 = _getPrice(sqrtP, 8, 18);
-        uint256 targetRange = wbtcPriceInBase18 - (wbtcPriceInBase18 / 10);
+        (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+        uint160 inversedQ96 = _getInverseQ96(sqrtP, 18, 18);    // So 3000/1 
+        uint256 exchangeRate = _getErInBase18(inversedQ96, 18, 18); // In base 1e18
+        (sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+        uint256 syntheticWethSkirkPrice = _getErInBase18(sqrtP, 18, 18);    // IN base 1e18
+        // DAI/WETH price - 0.1%
+        uint256 targetRange = exchangeRate - (exchangeRate / 10);
+        // Creating grid
         uint256 limit = targetRange / 100;  // allowing 1% discrepancy
-        if(targetRange + limit > syntheticWbtcPriceInbase18 && targetRange - limit < syntheticWbtcPriceInbase18) {
+        if(targetRange + limit > syntheticWethSkirkPrice && targetRange - limit < syntheticWethSkirkPrice) {
             return(0, 3);
         } else {
-            // 1: Meaning (wbtc/skirk) pool needs to reduce its price, 2: ... Increase it
-            uint8 dir = targetRange < syntheticWbtcPriceInbase18 ? 1 : 2;
+            // 1: Meaning (weth/skirk) pool needs to reduce its price, 2: ... Increase it
+            uint8 dir = targetRange < syntheticWethSkirkPrice ? 1 : 2;
             // uint256 difference = dir == 1 ? syntheticWbtcPriceInbase18 - targetRange : targetRange - syntheticWbtcPriceInbase18;
             return(SafeCast.toUint248(targetRange), dir);
         }
+    }
+    event MangoMango(uint256);
+    function _inverse(uint160 sqrtP, uint256 d0, uint256 d1) internal view returns(uint160 _finalPrice){
+        uint256 sqrtPrice = uint256(sqrtP);
+        uint256 base = sqrtPrice * sqrtPrice / (2**192);
+        if(base == 0){
+            uint256 factor = q96 / sqrtPrice;
+            _finalPrice = uint160(q96 * factor);
+        } else {
+            if(d0 == d1 && base > 0){
+                _finalPrice = _getSqrP(q96 / base, 18, 18);
+            } else if(d0 != d1 && base <= (10**d1)){
+                if(base == (10**d1)){
+                    return _getSqrP(base, 18, 18);
+                }else {
+                    uint256 _q96 = (q96 * (10**d0));
+                    uint256 factor = _q96 / sqrtPrice;
+                    _finalPrice = uint160(_q96 * factor);   // TBD FIX
+                }
+            }
+        }
+        /*
+        1 in q96        = 79228162514264337593543950336
+        1/3000 in q96   = 1418775660712374678828290181
+        */
     }
 
     /*
@@ -403,6 +449,119 @@ contract Methods is Setup {
         }   
     }
 
+    // function _getExchangeRate(uint160 sqrtP, uint256 d0, uint256 d1) internal pure returns(uint256){
+    //     return (uint256(sqrtP).mulDiv(uint256(sqrtP), (2**192)));
+    // }
+
+    /*
+    * DEFINITE FUNCTION TO GET Q96 SQRTPRICE.
+    * Requires: ER to be in 1e18 base, to represent floats.
+    */
+    function _getQ96(uint256 erInBase18, uint256 d0, uint256 d1) internal view returns(uint160){
+        if(d0 == d1){
+            // Regular sqrtPrice.
+            return _x96(erInBase18);
+        }else {
+            uint8 dir = d1 > d0 ? 1 : 0;
+            uint256 sf = dir == 1 ? 10**(d1 - d0) : 10**(d0 - d1);
+            uint256 scaledExchangeRate = dir == 1 ? erInBase18 * sf : erInBase18 / sf;
+            return _x96(scaledExchangeRate);
+        }
+    }
+
+    function _x96(uint256 er) internal view returns(uint160){
+        // Since _getQ96 requires the ratio to be in base 18 in case d1 < d0, we rescale by the root of said base.
+        return SafeCast.toUint160(q96.mulDiv(sqrtu(er), sqrtu(1e18)));
+    }
+
+    /*
+    * Reverts sqrtPrice q96 values to its inverted counterpart.
+    */
+    event Flop(uint256);
+    function _getErInBase18(uint160 sqrtPrice, uint256 d0, uint256 d1) internal pure returns(uint256 price){
+        uint8 flag = d1 < d0 ? 0 : 1;
+        if(flag == 0){
+            uint256 numerator1 =uint256(sqrtPrice) *uint256(sqrtPrice);  
+            uint256 numerator2 = 1e18 * 10**(d0-d1); 
+            price = FullMath.mulDiv(numerator1, numerator2, 1 << 192);
+        } else {
+            uint256 numerator1 =uint256(sqrtPrice) *uint256(sqrtPrice);  
+            uint256 numerator2 = 1e18 / 10**(d1 -d0);                // Lowering 1e18 base by decimal difference.
+            uint256 _price = FullMath.mulDiv(numerator1, numerator2, 1 << 192);
+            price = _price;
+        }
+    } 
+                                                // 8            6  
+    function _getInverseQ96(uint160 sqrtP, uint256 d0, uint256 d1) internal view returns(uint160){
+        uint256 erInBase18 = _getErInBase18(sqrtP, d0, d1);         // RAW ER so 6400e18
+        uint256 inverse = 1e36 / erInBase18;                        // .0000156250000000000 Raw inverse ER in base 1e18
+        if(d0 == d1){
+            uint256 _q96_ = q96.mulDiv(sqrtu(inverse), sqrtu(1e18));
+            return SafeCast.toUint160(_q96_);
+        }
+        // Inversing decimals:
+        inverse = d0 > d1 ? inverse * 10**(d0 - d1) : inverse / 10**(d1 - d0);  // Shifting to match correct decimal exchange
+        uint256 _q96 = q96.mulDiv(sqrtu(inverse), sqrtu(1e18));
+        return SafeCast.toUint160(_q96);
+    }
+
+    /*
+    * Turns float to respective q96 fixed point numbers square root.
+    * The float must already be scaled by token0's decimals.
+    * DAI/WETH: (1/3000) * 1e18. ~33e13
+    */
+    // function _floatToSqrtPrice(uint256 float, uint256 d0, uint256 d1) internal returns(uint160 result){
+    //         if(d0 == d1){
+    //         uint256 unScaledResult = sqrtu(float) * (2**96);
+    //         result = SafeCast.toUint160(unScaledResult / sqrtu(10 ** d0));
+    //         }else {
+    //             uint256 scaled = _scaleDecimals(float, d0, d1);
+    //             uint256 res = q96.mulDiv(sqrtu(scaled), sqrtu(1e18 * (10**d0)));
+    //             result = SafeCast.toUint160(res);
+    //         }
+    // }
+
+    // function _scaleDecimals(uint256 rawER, uint256 d0, uint256 d1) internal returns(uint256 result){
+    //     uint256 base = 1e18;                                // Base will be 1e18.
+    //     uint256 decimalsFactor = d1 > d0 ? base * 10**(d1 - d0) : base / 10**(d0 - d1);
+    //     result = rawER * decimalsFactor;
+    // }
+
+    // function _inverseAgain(uint160 q96, uint256 d0, uint256 d1) internal returns(uint256){
+    //     uint256 tokenAInDecimalB = _getPrice(q96, d0, d1);
+    //     uint256 baseInOppositeDecimal = 10**d1;             // 1e8
+    //     return baseInOppositeDecimal.mulDiv((10**d0), tokenAInDecimalB);
+    //     // return baseInOppositeDecimal / tokenAInDecimalB;    // 1e8 / 1560
+    // }
+
+    // function _getSqrtPriceDecimal0(uint256 er_decimal0, uint256 d0) internal returns(uint160){
+    //     return SafeCast.toUint160(q96.mulDiv(sqrtu(er_decimal0), (sqrtu(10**d0))));
+    // }
+
+
+
+    /*
+    * Returns sqrPrice for decimal point price.
+    * Rerquires the exchangeRate to already account for both deciamls.
+    */
+    function _getSqrtP_Decimal(uint256 exchangeRateInDecimal0) internal pure returns(uint160 sqrtPrice){
+        sqrtPrice = SafeCast.toUint160(sqrtu(exchangeRateInDecimal0) * (2**96));
+    }
+
+    function _getSqrtP_Decimal_TBD(uint256 er) internal pure returns(uint160 sqrtPrice){
+        sqrtPrice = SafeCast.toUint160((sqrtu(er) * (2**96)/(10**9)));
+    }
+
+    function getSquareRootPriceX96(uint256 exchangeRate, uint8 token0Decimals, uint8 token1Decimals) public pure returns (uint160) {
+        uint256 token0Multiplier = 10 ** token0Decimals;
+        uint256 token1Multiplier = 10 ** token1Decimals;
+    
+        uint256 priceRatio = (exchangeRate * token1Multiplier) / token0Multiplier;
+        uint160 squareRootPriceX96 = SafeCast.toUint160(sqrtu(priceRatio << 96));
+    
+        return squareRootPriceX96;
+    }
+
     /*
     * Returns 1 dividey by the given q96 exchange rate.
     * Wont return a uint256, since decimal points cant be represented there.
@@ -503,7 +662,7 @@ contract Methods is Setup {
     // return (uint(sqrtPrice) * (uint(sqrtPrice)) * (1e8)) >> (96 * 2);
     // }
 
-    function _q96(uint128 fR) internal pure returns (uint160 fn) {
+    function __q96(uint128 fR) internal pure returns (uint160 fn) {
     
         // Scale `fR` to match the decimals of `token0`
         uint256 scaledFR = uint256(fR) * (10 ** 10); // Scale `fR` by 10^10 to match the 18 decimals of `token0`
@@ -543,6 +702,15 @@ contract Methods is Setup {
     ) internal {
         vm.startPrank(address(0xdead));
         _mintApprove(tkn, address(this), amount);
+        vm.stopPrank();
+    }
+
+    function _deadApprove(
+        MockERC20 token,
+        uint256 amount
+    ) internal {
+        vm.startPrank(address(0xdead));
+        token.approve(address(this), amount);
         vm.stopPrank();
     }
 
@@ -598,6 +766,7 @@ contract Methods is Setup {
         emit MangoUint256(address(0x99), 123);
     }
 
+    event Foo(uint256);
     function uniswapV3SwapCallback(
         int256 _amount0Owed,
         int256 _amount1Owed,
@@ -617,7 +786,7 @@ contract Methods is Setup {
             xSKIRK.exactSkirkOut(amount0Owed);
             vm.stopPrank();
         }
-
+        
         if(token1 == address(xSKIRK) && amount1Owed > 0){
             uint256 daiRequired = xSKIRK.getSkirkForDai(amount1Owed);
             _deadMintApprove(dai, daiRequired);
@@ -632,6 +801,7 @@ contract Methods is Setup {
                 _deadMintApprove(MockERC20(token0), amount0Owed);
                 IERC20(token0).safeTransferFrom((address(0xdead)),msg.sender, amount0Owed);
             } else {
+                _deadApprove(MockERC20(address(xSKIRK)), amount0Owed);
                 IERC20(token0).safeTransferFrom(address(0xdead), msg.sender, amount0Owed);
             }
         }
@@ -641,6 +811,7 @@ contract Methods is Setup {
                 _deadMintApprove(MockERC20(token1), amount1Owed);
                 IERC20(token1).safeTransferFrom(address(0xdead), msg.sender, amount1Owed);
             } else {
+                _deadApprove(MockERC20(address(xSKIRK)), amount1Owed);
                 IERC20(token1).safeTransferFrom(address(0xdead), msg.sender, amount1Owed);
             }
         }

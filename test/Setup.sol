@@ -6,8 +6,10 @@ import "./Instances.sol";
 contract Setup is Instances {
 
     address internal pool_dai_usdc;
+    address internal pool_weth_xSkirk;
+    address internal pool_dai_weth;
     address internal pool_wbtc_dai;
-    address internal pool_wbtc_xSkirk;
+    uint256 internal q96 = 79228162514264337593543950336;
 
     function setUp() public virtual {
 
@@ -20,19 +22,31 @@ contract Setup is Instances {
         dai = new MockERC20("DAI", "DAI", 18);
         wbtc =  new MockERC20("WBTC", "WBTC", 8);
         usdc = new MockERC20("USDC", "USDC", 6);
-        while(address(dai) > address(usdc) && address(dai) > address(wbtc)){
+        weth = new MockERC20("WETH", "WETH", 18);
+        while(address(dai) > address(usdc) && address(dai) < address(weth)){
             usdc = new MockERC20("USDC", "USDC", 6);
             dai = new MockERC20("DAI", "DAI", 18);
         }
 
         vm.startPrank(admin.addr);
-        factory = new UniswapV3Factory();
-        factory.enableFeeAmount(100, 1);
-        pool_dai_usdc = factory.createPool(
+        UniswapFactory = new UniswapV3Factory();
+        UniswapFactory.enableFeeAmount(100, 1);
+
+        // Creating dai/usdc pool:
+        pool_dai_usdc = UniswapFactory.createPool(
             address(dai),
             address(usdc),
             100
-        );
+        );// 79228268913569923476614
+        IUniswapV3Pool(UniswapFactory.getPool(address(dai), address(usdc), 100)).initialize(79228268913569923476614); // 1$
+
+        // Creating weth/dai pool:
+        pool_dai_weth = UniswapFactory.createPool(
+            address(dai),
+            address(weth),
+            500
+        );  // 1427447747021118165691127445
+        IUniswapV3Pool(UniswapFactory.getPool(address(dai), address(weth), 500)).initialize(1427447747021118165691127445); //  1/3100
 
         acheronDeployer = new AcheronDeployer();
         string memory skirkSalt = "By the wings of eternity and the breath of ages, To all creation, heed my plea";
@@ -44,35 +58,33 @@ contract Setup is Instances {
         xSKIRK = xSkirk(xSkirkAddress);
         acheron = Acheron(AcheronAddress);
 
-        // console.log("WBTC  :", address(wbtc));
-        // console.log("xSKIRK: ", xSkirkAddress);
+        // Creating the SkirkSwapFactory contract, deploying & initalizing the pool.
+        SkirkFactory = new UniswapV3Factory();
+        SkirkFactory.enableFeeAmount(100, 1);
+        pool_weth_xSkirk = SkirkFactory.createPool(
+            address(weth),
+            address(xSkirkAddress),
+            500
+        );
         vm.stopPrank();
 
-        // WBTC/DAI pool:
-        pool_wbtc_dai = factory.createPool(address(wbtc), address(dai), 3000);
-        IUniswapV3Pool(factory.getPool(address(wbtc), address(dai), 3000)).initialize(2004331587000383584631039759405285376); // 64k
+        IUniswapV3Pool(SkirkFactory.getPool(address(weth), address(xSkirkAddress), 500)).initialize(4411237397794263893240602165248); // 3100/1
 
-        // IUniswapV3Pool(factory.getPool(address(wbtc), address(dai), 3000)).initialize(1892823712081295383306828407087962153); // 57k
-
-
-        // WBTC/xSKIRK pool:
-        pool_wbtc_xSkirk = factory.createPool(address(wbtc), address(xSkirkAddress), 3000);    
-        IUniswapV3Pool(factory.getPool(address(wbtc), address(xSkirkAddress), 3000)).initialize(2004331587000383584631039759405285376); // 64k
-        // Starting at 64k is a intentional mistake, to incentivice corrections on its way :)
-
-        universalAggregator = new UniversalAggregator(address(factory));
-        mangoSwapRouter = new MangoSwapRouter(address(factory), address(0x88));
+        universalAggregator = new UniversalAggregator(address(UniswapFactory));
+        mangoSwapRouter = new MangoSwapRouter(address(UniswapFactory), address(0x88));
 
         vm.startPrank(admin.addr);
         acheronDeployer.deploy(
             skirkSalt,
             acheronSalt,
             AcheronDeployer.Params({
-            core_pool: factory.getPool(address(wbtc), address(xSkirkAddress), 3000),    // WBTC/xSKIRK
-            factory: address(factory),
-            wbtc: address(wbtc),
-            dai: address(dai),
-            skirk_aggregator: address(0x7777777777)
+                DAI_WETH_POOL: pool_dai_weth,
+                WETH_SKIRK_POOL: pool_weth_xSkirk,
+                dai: address(dai),
+                weth: address(weth),
+                SkirkFactory: address(SkirkFactory),
+                UniFactory: address(UniswapFactory),
+                SkirkAggregator: address(0xaaaaaaa)
         }));
         vm.stopPrank();
 
@@ -80,8 +92,8 @@ contract Setup is Instances {
 
         /*
         Deployed contracts thus far:
-        { DAI, USDC, WBTC, Uni-Factory, Uni-Pool(WBTC/DAI), Uni-Pool(WBTC/xSKIRK), 
-            universalAggregator, mangoSwapRouter, acheronDeployer, xSkirk, Acheron, }
+        { DAI, USDC, WBTC, Uni-Factory, Uni-Pool(dai/usdc), Uni-Pool(dai/weth), Skirk-Pool(weth/xSkirk), 
+            SkirkSwapFactory, UniswapFactory, universalAggregator, mangoSwapRouter, acheronDeployer, xSkirk, Acheron, }
         */
     }
 

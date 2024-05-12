@@ -54,11 +54,11 @@ decimals_wbtc = 8  # WBTC has 8 decimals
 decimals_dai = 18  # DAI has 18 decimals
 18
 # Calculate the price of WBTC in terms of DAI
-price_of_wbtc_in_dai = sqrt_price_x96_to_price(833554031069361611582381946952482816, 8, 18)
+price_of_wbtc_in_dai = sqrt_price_x96_to_price(8536811594165975124744711716116, 18, 18)
 
 print(f"The price of WBTC in terms of DAI is: {price_of_wbtc_in_dai:.18f} DAI")
 
-print("SqrtP:", price_to_sqrt_price_x96(3100, 18, 18))
+print("SqrtP:", price_to_sqrt_price_x96(20000, 18, 18))
 
 
 # 10k sqrtP for tick: 792281625142643375935439503360000000          tick: 322378
@@ -98,3 +98,6 @@ def inverse(sqrtP, d0, d1):
 # print(f"Weth/usdc price     : {sqrt_price_x96_to_price(4315976797815444669988864, 18, 6):.18f}")
 
 # print(f"xskirk/wbtc price     : {sqrt_price_x96_to_price(3441442688854942285824, 18, 8):.18f}")
+
+
+print("Inverse Sqrtprice:", inverse(2046336672683425017101090566858, 18, 18))

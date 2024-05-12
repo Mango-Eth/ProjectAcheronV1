@@ -42,7 +42,8 @@ contract Instances is Test {
     // IUniswapV3Pool pool3;
     // IUniswapV3Factory factory;
 
-    UniswapV3Factory factory;
+    UniswapV3Factory UniswapFactory;
+    UniswapV3Factory SkirkFactory;
 
     UniversalAggregator universalAggregator;
 
@@ -62,4 +63,5 @@ contract Instances is Test {
     MockERC20 dai;
     MockERC20 wbtc;
     MockERC20 usdc;
+    MockERC20 weth;
 }
