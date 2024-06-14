@@ -1,0 +1,114 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../../Methods.sol";
+
+contract Stable_Mainnet is Methods {
+
+    /// Whales: ///
+    address USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address DAI_Whale = 0x517F9dD285e75b599234F7221227339478d0FcC8; // v2 pool maker/dai
+    address WETH_Wahle = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E; // 500_000 e18 weth !
+    address USDC_Whale = 0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa;
+    address DAI_USDC_POOL = 0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168;
+
+    /*
+    * Test compounding:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testCompoundFeesBackIntoPosition -vvv
+    */
+    function testCompoundFeesBackIntoPosition() public {
+        vm.startPrank(DAI_Whale);
+        IERC20(DAI).transfer(address(prog), 1_200_000e18);
+        vm.stopPrank();
+        (uint256 a0, uint256 a1) = prog.add{value: 0}();
+        console.log("amount deposited:", (a0 +(a1 * 1e12)) / 1e18);
+
+        _generateFees();
+        // _generateFees();
+
+        vm.startPrank(alice.addr);
+        prog.comp{value: 0}();
+        vm.stopPrank();
+    }
+
+    /*
+    * Test compounding:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testCompoundClaimAndWithdraw -vvv
+    */
+    function testCompoundClaimAndWithdraw() public {
+        vm.startPrank(DAI_Whale);
+        IERC20(DAI).transfer(address(prog), 1_200_000e18);
+        vm.stopPrank();
+        (uint256 a0, uint256 a1) = prog.add{value: 0}();
+        console.log("amount deposited:", (a0 +(a1 * 1e12)) / 1e18);
+
+        _generateFees();
+        // _generateFees();
+
+        uint256 priorDai = IERC20(DAI).balanceOf(address(prog));
+        uint256 priorUSDC = IERC20(USDC).balanceOf(address(prog));
+        vm.startPrank(alice.addr);
+        prog.with(
+            "0x0c97058570d9670f438104f393c2581e872f34e35ecb500df0d1d61fe07b6435",
+            0xaf0f11046e416c58c0e1359fa0affb08aee7742c1c9329a9b680683013b23e4a,
+            alice.addr
+        );
+        vm.stopPrank();
+        uint256 daiAfter = IERC20(DAI).balanceOf(alice.addr);
+        uint256 usdcAfter = IERC20(USDC).balanceOf(alice.addr);
+        console.log("Collected DAI:", daiAfter - priorDai);
+        console.log("Collected USD:", usdcAfter - priorUSDC);
+    }
+
+    function _generateFees() internal {
+        _swap(
+            DAI_USDC_POOL,
+            USDC_Whale,
+            0,
+            10_000_000e18,
+            56022770974786135785472         // 0.5 $
+        );
+        _swap(
+            DAI_USDC_POOL,
+            DAI_Whale,
+            1,
+            10_000_000e6,
+            177159557114295696228352        // 5 $
+        );
+    }
+
+    function _swap(
+        address pool,
+        address user,
+        uint8 dir,          // 0: DAI_IN, 1: USDC_IN
+        int256 amount,
+        uint160 sqrtP_Limit
+    ) internal returns(int256 a0, int256 a1){
+        (a0, a1) = IUniswapV3Pool(pool).swap(
+            user,
+            dir == 1 ? false : true,
+            amount,
+            sqrtP_Limit,
+            ""
+        );
+    }
+
+    function uniswapV3SwapCallback(
+        int256 a0,
+        int256 a1,
+        bytes calldata
+    ) public override virtual {
+        if(a0 > 0){
+            vm.startPrank(DAI_Whale);
+            IERC20(DAI).transfer(msg.sender, uint256(a0));
+            vm.stopPrank();
+        }
+        if(a1 > 0){
+            vm.startPrank(USDC_Whale);
+            IERC20(USDC).transfer(msg.sender, uint256(a1));
+            vm.stopPrank();
+        }
+    }
+}

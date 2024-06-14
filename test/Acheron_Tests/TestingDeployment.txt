@@ -1,0 +1,610 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../Methods.sol";
+
+contract TestingDeployment is Methods {
+
+    /*
+    * Arbitrag WETH/SKIRK pool.
+    * Mint.
+    */
+    // function testCheckingPools() public {
+    //     (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+    //     console.log("WETH/SKIRK price      :", _getPrice(sqrtP, 18,18));
+
+    //     // Balancing WETH/SKIRK:
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     (sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+    //     console.log("WETH/SKIRK price after:", _getPrice(sqrtP, 18,18));
+    // }
+
+    // /*
+    // * Finally testing minting:
+    // */
+    // function testMintingAcheron() public {
+    //     // Balancing WETH/SKIRK:
+    //     _balanceWeth_xSkirk_Pool();
+    //     _mintAcheron(alice.addr);
+    // }
+
+    // /*54703065641146214202922469896
+    // *  Looping from 2700 to 1000 on WETH/SKIRK price & minting.
+    // */
+    // function testMintingFuzzInBearMarket() public {
+    //     uint256 startingPrice = 3000e18;
+    //     for(uint256 i; i < 20; i++){
+    //         uint256 spotPrice = startingPrice - (i * 100e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+
+    //         console.log("POOL STATES:");
+    //         // DAI/WETH
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         sqrtP = _getInverseQ96(sqrtP, 18, 18);
+    //         uint256 DAI_WETH_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //         console.log("DAI/WETH", DAI_WETH_POOL_PRICE);
+    //         // WETH/SKIRK
+    //         (sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+    //         uint256 WETH_SKIRK_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //         console.log("WETH/SKIRK", WETH_SKIRK_POOL_PRICE);
+    //         uint256 id = _mintAcheron(alice.addr);
+    //         console.log("ID of acheron:", id);
+    //         uint256 liquidity = IUniswapV3Pool(pool_weth_xSkirk).liquidity();
+    //         console.log("New L WETH/SKRIK:", liquidity);
+    //         // (uint160 sqrtPrice,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         // uint256 val = _getPrice(_inverse(sqrtPrice, 18, 18), 18, 18);
+    //         // console.log("Mint successful at:", val);
+    //     }
+    // }
+
+    // function testAllPriceRangesMints() public { // 1766477719156414916
+    //     uint256 startingPrice = 900e18;         // 1766529658831091868
+    //     for(uint256 i; i < 300; i++){
+    //         // i<1910 for max
+    //         uint256 spotPrice = startingPrice + (i * 10e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+
+    //         console.log("POOL STATES:");
+    //         // DAI/WETH
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         sqrtP = _getInverseQ96(sqrtP, 18, 18);
+    //         uint256 DAI_WETH_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //         console.log("DAI/WETH", DAI_WETH_POOL_PRICE);
+    //         // WETH/SKIRK
+    //         (sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+    //         uint256 WETH_SKIRK_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //         console.log("WETH/SKIRK", WETH_SKIRK_POOL_PRICE);
+    //         uint256 id = _mintAcheron(alice.addr);
+    //         console.log("ID of acheron:", id);
+    //         uint256 liquidity = IUniswapV3Pool(pool_weth_xSkirk).liquidity();
+    //         console.log("New L WETH/SKRIK:", liquidity);
+    // }
+    // }
+
+    // function testGrabbingAmounts() public {
+    //     uint256 startingPrice = 9500e18;
+    //     uint256 depositAmount = 200e18;
+    //     for(uint i; i <106; i++){
+    //         uint256 currentPrice = startingPrice + (i * 100e18);
+    //         uint256 wethAmount;
+    //         uint256 skirkAmount;
+    //         (wethAmount, skirkAmount) = acheron.testUppSearch(
+    //             _getQ96(currentPrice, 18, 18),
+    //             currentPrice,
+    //             depositAmount
+    //         );
+    //         uint256 lowestTarget = depositAmount - (depositAmount / 20);
+    //         uint256 LpValue = _calculateValue(currentPrice, wethAmount) + skirkAmount;
+    //         if(LpValue < lowestTarget){
+    //             console.log("FAILED AT:", currentPrice);
+    //             console.log("VALUES   :", wethAmount, skirkAmount);
+    //             break;
+    //         }
+    //         console.log("Success at   :", currentPrice, wethAmount, skirkAmount);
+    //     }
+    // }
+
+    // function testGrabbingLowerAmounts() public {
+    //     uint256 startingPrice = 9500e18;
+    //     uint256 depositAmount = 200e18;
+    //     for(uint i; i <86; i++){
+    //         uint256 currentPrice = startingPrice - (i * 100e18);
+    //         uint256 wethAmount;
+    //         uint256 skirkAmount;
+    //         (wethAmount, skirkAmount) = acheron.testLowerSearch(
+    //             _getQ96(currentPrice, 18, 18),
+    //             currentPrice,
+    //             depositAmount
+    //         );
+    //         uint256 lowestTarget = depositAmount - (depositAmount / 20);
+    //         uint256 LpValue = _calculateValue(currentPrice, wethAmount) + skirkAmount;
+    //         if(LpValue < lowestTarget){
+    //             console.log("FAILED AT:", currentPrice);
+    //             console.log("VALUES   :", wethAmount, skirkAmount);
+    //             break;
+    //         }
+    //         console.log("Success at   :", currentPrice, wethAmount, skirkAmount);
+    //     }
+    // }
+
+    // function _calculateValue(uint256 _wethPrice, uint256 _wethAmount) internal pure returns (uint256 daiER) {
+    //     daiER = (_wethPrice * _wethAmount) / 1e18;
+    // }
+
+    // /*
+    // * Testing weth/xskirk ranges from 3000++
+    // * Also minting all possible ids
+    // */
+    // function testMintingFuzzInBullMarket() public {
+    //     uint256 startingPrice = 3000e18;
+    //     for(uint256 i; i < 170; i++){
+    //         uint256 spotPrice = startingPrice + (i * 100e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+
+    //         console.log("POOL STATES:");
+    //         // DAI/WETH
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         sqrtP = _getInverseQ96(sqrtP, 18, 18);
+    //         uint256 DAI_WETH_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //         console.log("DAI/WETH", DAI_WETH_POOL_PRICE);
+    //         // WETH/SKIRK
+    //         (sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk).slot0();
+    //         uint256 WETH_SKIRK_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //         console.log("WETH/SKIRK", WETH_SKIRK_POOL_PRICE);
+    //         uint256 id = _mintAcheron(alice.addr);
+    //         console.log("ID of acheron:", id);
+    //         uint256 liquidity = IUniswapV3Pool(pool_weth_xSkirk).liquidity();
+    //         console.log("New L WETH/SKRIK:", liquidity);
+    //     }
+    // }
+
+    // // Checking arbitrage methods:
+    // function testCheckArbitrage() public {
+    //     (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //     uint256 DAI_WETH_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //     console.log("Starting price     :", DAI_WETH_POOL_PRICE);
+    //     console.log("Q96 startint price :", sqrtP);
+
+    //     uint256 targetPrice = 3000e18;
+    //     console.log("SHIFT TO           :", targetPrice);
+    //     uint160 erOverOne = _getQ96(targetPrice, 18, 18);
+    //     uint160 oneOverEr = _getInverseQ96(erOverOne, 18, 18);
+    //     console.log("TARGET q96         :", oneOverEr);
+    //     _shiftDAI_WETH_POOL(oneOverEr);         // Requires me to pass regular sqrtPrice.
+
+    //     console.log("Shifting");
+
+    //     // AFter:
+    //     (sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //     sqrtP = _getInverseQ96(sqrtP, 18, 18);
+    //     DAI_WETH_POOL_PRICE = _getErInBase18(sqrtP, 18, 18);
+    //     console.log("Price After        :", DAI_WETH_POOL_PRICE);
+    //     console.log("Q96 startint after :", sqrtP);
+    //     console.log("TWAP PRICE         :", acheron._getWethPrice());
+    // }
+
+    // function testCalculator() public view {
+    //     // uint256 sqrtPrice = 4674461588341595918019093069824;
+    //     // console.log(_getPrice(1446501726624926448360620032, 18, 18));
+    //     // console.log(_getSqrtP_Decimal(333333333333333));
+    //     // console.log(sqrtu(uint160(330578512396694 << 96)));
+    //     // console.log(_getSqrtP_Decimal_TBD(330578512396694));
+    //     // console.log(_floatToSqrtPrice(330578512396694, 18, 18));
+    //     // // console.log(_floatToSqrtPrice(15, 6, 8));
+    //     // console.log(_scaleDecimals(15, 6, 8));
+    //     // // console.log(sqrtu(_scaleDecimals(15, 6, 8)) * (2**96));
+    //     // console.log(sqrtu(1500000000000000000000));
+    //     // console.log(38729833462 * (2**96));
+    //     // console.log(3068493539677728994443703042890878943232 / sqrtu(1e18));
+    //     // console.log(_floatToSqrtPrice(15, 6, 8));
+
+    //     // console.log(_getPrice(2004331587000383570417679335424, 8, 6));
+    //     // console.log(_getExchangeRate(2004331587000383570417679335424, 8, 6));
+
+    //     // console.log(_inverseAgain(2004331587000383570417679335424, 8, 6));
+    //     // console.log(_getSqrtPriceDecimal0(66711140760, 8));
+
+    //     // console.log(_getQ96(1e18/64000, 6, 8));
+    //     // console.log(_getErInBase18(3131768045100222440636274234,6,8));
+    //     // console.log(_getQ96(640204865556978, 6, 8));
+
+    //     // PERFECTO
+    //     // console.log(_getQ96(64_000e18, 8, 6));                                // wbtc/usdc : 2004331586972888531368361892599
+    //     // console.log(_getErInBase18(2004331586972888531368361892599, 8, 6));  // 6400e18     er in base 1e18
+
+    //     // // 1e36 / 6400e18 = er
+    //     // // _getQ96(er) / sqrtu(1e36)
+
+    //     // console.log(_getInverseQ96(2004331586972888531368361892599, 8, 6)); // usdc/wbtc : 3131768045100222440636274234
+    //     // console.log(_getErInBase18(3131768045100222440636274234, 6, 8));    // 15624999405408 1/er in  base 1e18
+
+    //     // Also perfecto!                                            // WETH/DAI : 4339505179874779672736325173248 py()
+    //     // console.log(_getQ96(3000e18, 18, 18));      // WETH/DAI : 4339505179833849321777928796668 solc
+    //     // console.log(_getErInBase18(4339505179833849321777928796668, 18, 18));   // 2999.999999943408062499   perfect
+
+    //     //                                                                         // DAI/WETH : 1446501726624926448360620032(py)
+    //     // console.log(_getInverseQ96(4339505179833849321777928796668, 18, 18));   // DAI/WETH : 1446501680394854973938446002(solc)
+
+    //     // console.log(_getInverseQ96(1446501680394854973938446002, 18, 18));
+        
+    //     uint248 val;
+    //     uint8 flag;
+    //     (val, flag) = __getAmountsToArb();
+    //     console.log(uint256(val));    
+        
+
+    //     // console.log(_getInverseQ96());
+
+    //     /*
+    //     Py: 
+    //     1/64: 3067482403643444351322816512
+    //     64  : 2004331587000383570417679335424
+
+    //     Solc:
+    //     1/64:
+    //     64  : 
+    //     */
+    // }
+
+    // /*
+    // * Minting some acherons
+    // * Causing swaps to occur in weth/xskirk
+    // * Calling compound
+    // */
+    // function testCompounding() public {
+        
+    //     uint256 spotPrice = 3000e18;
+    //     uint256 inverse = 1e36/spotPrice;
+    //     uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //     (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //     if(sqrtP != inverseQ96){
+    //     _shiftDAI_WETH_POOL(inverseQ96);
+    //     _balanceWeth_xSkirk_Pool();
+    //     }
+
+    //     _mintAcheron(bob.addr);
+    //     _mintAcheron(bob.addr);
+    //     _mintAcheron(bob.addr);
+    //     _mintAcheron(alice.addr);
+
+    //     _simulateSwaps();
+
+    //     vm.startPrank(alice.addr);
+    //     // acheron.compoundRewards();
+
+    //     acheron.compound();
+
+    //     vm.stopPrank();
+    // }
+
+    // function _simulateSwaps() public {
+    //     uint256 price = 10000e18;
+    //     for(uint256 i; i < 50; i++){
+    //     uint256 spotPrice = price + (i * 100e18);
+    //     uint256 inverse = 1e36/spotPrice;
+    //     uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //     (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //     if(sqrtP != inverseQ96){
+    //     _shiftDAI_WETH_POOL(inverseQ96);
+    //     _balanceWeth_xSkirk_Pool();
+    //     }
+    //     }
+    // }
+
+    // /*
+    // * Testing CompoundRewards with only xSkirk as rewards
+    // * Rewards must only be in xSkirk & get recompounded as such throughout all price ranges.
+    // */  
+    // function testCompoundOnlyAmount1() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     // Minting 8 Acherons:
+    //     for(uint256 i; i < 8; i++){
+    //         if(i > 3){
+    //             _mintAcheron(alice.addr);
+    //         }else{
+    //             _mintAcheron(bob.addr);
+    //         }
+    //     }
+
+    //     for(uint256 i = 1; i<20; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 350e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         // acheron.compoundRewards();
+    //         vm.startPrank(alice.addr);
+    //         acheron.compound();
+    //         vm.stopPrank();
+    //         }
+    //         }
+    //         /*
+    //         Price:          5350000422969662708888
+    //         amount2:        25555153102508478
+    //         actualAmountIn  18662847453220620
+    //         */              
+    // }
+
+    // /*
+    // _mint_() function in Acheron.sol which is only for testing.
+
+    // Works as a charm!
+    // */
+    // function testMintAcheronInAllRanges() public {
+    //     uint256 amountOfSkirk = 200_000 * 1000e18;
+    //     _mintSkirk(amountOfSkirk, alice.addr);
+    //     vm.startPrank(alice.addr);
+    //     xSKIRK.approve(address(acheron), 2**256-1);
+    //     vm.stopPrank();
+
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<400; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 balanceProgenitorBefore = xSKIRK.balanceOf(address(0xaaaaaaa));
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+    //         vm.startPrank(alice.addr);
+    //         (,a0, a1, remaining) = acheron._mint_{value: 0}();
+    //         vm.stopPrank();
+    //         uint256 balanceProgenitorAfter = xSKIRK.balanceOf(address(0xaaaaaaa));
+    //         uint256 amountSpent = 1000e18 - (balanceProgenitorAfter - balanceProgenitorBefore);
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("RAw        :", amountSpent);
+    //         console.log("t0         :", a0,        "t1:", a1);
+    //     }
+    // }
+
+    // /*
+    //     * Testing all possible price ranges.
+    //     * While compounding only WETH amount!
+    //     */
+    //     function testOnlyCompoundWethAllRanges() public {
+    //         uint256 startingPriceBeforeLp = 800e18;
+    //         uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //         uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //         _shiftDAI_WETH_POOL(inverseQ96_start);
+    //         _balanceWeth_xSkirk_Pool();
+    
+    //         for(uint256 i = 1; i<22_000; i++){
+    //             uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //             uint256 inverse = 1e36/spotPrice;
+    //             uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //             (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //             if(sqrtP != inverseQ96){
+    //             _shiftDAI_WETH_POOL(inverseQ96);
+    //             _balanceWeth_xSkirk_Pool();
+    //             }
+    //             uint256 dollarValue = 10e18;   // 10 cents worth of WETH being compounded.
+    //             uint256 wethAmount = _daiToWeth(spotPrice, dollarValue);
+    //             uint256 a0;
+    //             uint256 a1;
+    //             uint256 remaining;
+    //             vm.startPrank(alice.addr);
+    //             weth.mint(wethAmount);
+    //             weth.approve(address(acheron), wethAmount);
+    //             (remaining, a0, a1) = acheron._compound_(wethAmount, 0, dollarValue);
+    //             vm.stopPrank();
+    //             uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //             console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //             if(sum < 10e18 - ((10e18 * 15)/100)){
+    //                 console.log("broke here:", spotPrice);
+    //                 break;
+    //             }
+    //             // console.log("t0         :", a0,        "t1:", a1);
+    //         }
+    //         }
+
+    // /*
+    // * Testing all ranges:
+    // */
+    // function testOnlyCompoundSkirkAllRanges() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 10e18;   // 10 cents worth of WETH being compounded.
+    //         // uint256 wethAmount = _daiToWeth(spotPrice, dollarValue);
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+
+    //         uint256 skirkAmount = dollarValue;
+    //         uint256 wethBefore = weth.balanceOf(address(acheron));
+    //         _mintSkirk(skirkAmount, alice.addr);
+    //         vm.startPrank(alice.addr);
+    //         xSKIRK.approve(address(acheron), skirkAmount);
+    //         (remaining, a0, a1) = acheron._compound_(0, skirkAmount, dollarValue);
+    //         vm.stopPrank();
+    //         uint256 wethAfter = weth.balanceOf(address(acheron));
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         // console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         // console.log("Entire sum :", sum + remaining);
+    //         console.log("Dust", wethAfter - wethBefore);
+    //         if(sum < dollarValue - ((dollarValue * 15)/100)){
+    //             console.log("broke here:", spotPrice);
+    //             break;
+    //         }
+    //         // console.log("t0         :", a0,        "t1:", a1);
+    //     }
+    // }
+
+    // /*
+    // * Testing all ranges.
+    // * Compounding surpluss WETH to be transformed to xSkirk.
+    // * Target L is less than sum account for weth surpluss.
+    // */
+    // function testOnlyCompoundSkirkAndWethAllRanges() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 10e18;   // 10 cents worth of WETH being compounded.
+    //         uint256 wethAmount = _daiToWeth(spotPrice, (dollarValue * 10));
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+            
+    //         uint256 skirkAmount = 3e15;
+    //         _mintSkirk(skirkAmount, alice.addr);
+    //         // uint256 xSkirkRemainingBefore = weth.balanceOf(address(acheron));
+    //         vm.startPrank(alice.addr);
+    //         weth.mint(wethAmount);
+    //         weth.approve(address(acheron), wethAmount);
+    //         xSKIRK.approve(address(acheron), skirkAmount);
+    //         //Sending wethAmount in worth of dollarValue, sending 3e15 xSkirkk(dust) and requesting dollarValue
+    //         (remaining, a0, a1) = acheron._compound_(wethAmount, skirkAmount, dollarValue);
+    //         vm.stopPrank();
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("Remaining :", remaining);
+    //         // uint256 xSkirkRemainingAfter = weth.balanceOf(address(acheron));
+    //         // console.log("Dust weth:", xSkirkRemainingAfter - xSkirkRemainingBefore);
+    //     }
+    // }
+}
+
+
+/*
+function _handlingSwap(
+        uint128 liquidity,
+        uint256 wethPrice,
+        uint256 wethAmount,
+        uint256 xSkirkAmount,
+        uint160 sqrtPrice
+    ) internal returns(uint256, uint256, uint256){
+        uint256 a0;
+        uint256 a1;
+        uint256 wethRequired;
+        uint256 skirkRequired;
+        (wethRequired, skirkRequired) = LiquidityMath.getAmountsForLiquidity(sqrtPrice, tl_SqrtP, tu_SqrtP, liquidity);
+        emit AmountsToLp(wethRequired, skirkRequired);
+        wethRequired = wethRequired > 0 ? (wethRequired + 1) : 0;
+        skirkRequired = skirkRequired > 0 ? (skirkRequired + 1) : 0;  // Adding 1 wei to account for the liquidityMath rounding down division.
+        if(wethAmount > wethRequired && xSkirkAmount > skirkRequired){
+            // We have enough to instantly _mint then swap the remaining WETH to DAI or xSKIRK.
+            (a0, a1) = _mint(liquidity);                // Mint returns the amounts taken.(amount0Taken, amount1Taken)
+            uint256 remaining0 = wethAmount - a0;
+            uint256 remaining1 = xSkirkAmount - a1;
+            if(_wethToDai(wethPrice, remaining0) > 1e16){
+                // Swap said amount to DAI then Wrap to xSkirk.
+                uint256 xSkirkObtained = _ensureInWeth(remaining0, wethPrice);
+                return (a0, a1, remaining1 + xSkirkObtained);
+            }                                                
+            return (a0, a1, remaining1);
+
+        } else if(wethAmount < wethRequired && xSkirkAmount > skirkRequired){       // minting goes here.
+            // We have enough skirk but not enough WETH, get the amount remaining.
+            uint256 remainingSkirk = _ensureOut(wethRequired - wethAmount, xSkirkAmount, wethPrice);     // This ensures wethRequired is obtained.
+            if(remainingSkirk >= skirkRequired){    // Should always be the case because the liquidity is 3% less always.
+                (a0, a1) = _mint(liquidity);        // Meaning we deposited into our initial L.
+                return(a0, a1, remainingSkirk >= a1 ? remainingSkirk - a1 : 0);
+            }
+            // To prevent any reverts, this will re-calculate the L amount. But will only be the case on very expensive swaps.
+            // Furthermore, this needs to be in parallel with the slippage protection of _ensureOut(). 
+            (a0, a1) = _mint(LiquidityMath.getLiquidityForAmounts(sqrtPrice, tl_SqrtP, tu_SqrtP, wethRequired - 1, remainingSkirk - 1));
+            uint256 remaining0 = wethRequired > a0 ? wethRequired - a0 : 0;
+            if(_wethToDai(wethPrice, remaining0) > 1e16){                       // Swaps to dai need to be accounted for the wrapping loss into xSkirk!!!
+                // Swap said amount to DAI then Wrap to xSkirk.
+                uint256 xSkirkObtained_Swap = _ensureInWeth(remaining0, wethPrice);
+                return (a0, a1, xSkirkObtained_Swap);
+            }  
+            return(a0, a1, 0);  // Might have weth in dust, but will get scooped in next compound.
+        } else if(wethAmount > wethRequired && xSkirkAmount < skirkRequired){    // Can only be called by compound().
+            // We have enough weth but not enough skirk.    
+            
+            // wethAmount must be therefore all the weth this contract has, while the L is only 30% of it + xSkirk.
+            uint256 xSkirkObtained = _ensureInWeth(wethAmount - wethRequired, wethPrice);
+            if(xSkirkObtained >= skirkRequired){            // 4383496076283964
+                (a0, a1) = _mint(liquidity);                // 4123502720069837 
+                return (a0, a1, xSkirkObtained >= a1 ? xSkirkObtained - a1 : 0);   // 43323209671569 weth 127007454363067537 skrk
+            } else {                                                               // 40753629024419 weth 132749338382290075 -> 119474404544061068  
+                // Since swapping out excess WETH does not guarantee that we will have enough to mint we get a new liquidity:
+                (a0, a1) = _mint(LiquidityMath.getLiquidityForAmounts(sqrtPrice, tl_SqrtP, tu_SqrtP, wethRequired - 1, xSkirkObtained - 1));
+                uint256 remaining0 = wethRequired > a0 ? wethRequired - a0 : 0;
+                if(_wethToDai(wethPrice, remaining0) > 1e16){                       // Swaps to dai need to be accounted for the wrapping loss into xSkirk!!!
+                    // Swap said amount to DAI then Wrap to xSkirk.
+                    uint256 xSkirkObtained_Swap = _ensureInWeth(remaining0, wethPrice);
+                    xSkirkObtained = xSkirkObtained > a1 ? xSkirkObtained - a1 : 0;
+                    return (a0, a1, (xSkirkObtained + xSkirkObtained_Swap));
+                }  
+                return (a0, a1, xSkirkObtained > a1 ? xSkirkObtained - a1 : 0); 
+            }                                                                   
+         
+        } else if(wethRequired == 0) {                                          
+            (a0, a1) = _mint(liquidity);
+            return(a0, a1, xSkirkAmount - a1);
+        } else if(skirkRequired == 0) {
+            if(wethAmount >= wethRequired){
+                (a0, a1) = _mint(liquidity);
+                uint256 remaining0 = wethAmount - a0;
+                if(_wethToDai(wethPrice, remaining0) > 1e16){
+                    // Swap said amount to DAI then Wrap to xSkirk.
+                    uint256 xSkirkObtained = _ensureInWeth(remaining0, wethPrice);
+                    return (a0, a1, xSkirkObtained);
+                }  
+                return(a0, a1, 0);
+            } else if(wethRequired > wethAmount) {  
+                // If we dont have enough weth for the sole weth position, we swap to get it.
+                // This means that we per default have xSkirk.
+                uint256 remainingSkirk = _ensureOut(wethRequired - wethAmount, xSkirkAmount, wethPrice);
+                (a0, a1) = _mint(liquidity);
+                return(a0, a1, remainingSkirk);   
+            }
+        }
+        // THrow error if we dont have enough of either. 
+        revert("Insufficient funds for liquidity provision"); 
+    }
+*/

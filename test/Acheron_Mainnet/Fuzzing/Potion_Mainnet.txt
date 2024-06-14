@@ -1,0 +1,349 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../../Methods.sol";
+
+contract Stable_Mainnet is Methods {
+
+    using SafeCast for uint256;
+
+    /*
+    * Attempting to mint 1 Potion
+    * Should in this early build perform the deposit.
+    forge test --fork-url=https://eth.llamarpc.com --match-test testDepositLiquidityViaPotion -vvv
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testDepositLiquidityViaPotion -vvv
+    */
+    function testDepositLiquidityViaPotion() public {   // Works
+        _mintxSkirk(alice.addr, 1000e18);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(blue), 2**256 -1);
+        (uint256 a0, uint256 a1, uint256 r) = blue.mint();
+        vm.stopPrank();
+        uint256 sum = a0 + (a1 * 1e12);
+        console.log("SUM:", sum / 1e18);
+        console.log("Remaining:", r);
+        console.log("Amounts:", a0, a1);
+        uint256 usdcDust = IERC20(USDC_m).balanceOf(address(blue));
+        uint256 daiDust = IERC20(DAI_m).balanceOf(address(blue));
+        uint256 xSkirkDust = m_xSkirk.balanceOf(address(blue));
+        console.log("DUST D:", daiDust);
+        console.log("DUST U:", usdcDust);
+        console.log("DUST X:", xSkirkDust);
+    }
+
+    /*
+    * Loop minting all 7k
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testMintAllPotions -vvv
+    */
+    function testMintAllPotions() public {
+        _mintxSkirk(alice.addr, 1000e18 * 7000);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(blue), 2**256 -1);
+        for(uint256 i; i < 7000; i++){
+            (uint256 a0, uint256 a1, uint256 r) = blue.mint();
+            uint256 sum = a0 + (a1 * 1e12);
+            console.log("SUM:", sum / 1e18);
+            require(r > 0);
+        }
+        vm.stopPrank();
+    }
+
+    /*
+    * Minting when tick shifts
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testShiftingTickMintingPotion -vvv
+    forge test --fork-url=https://eth.llamarpc.com --match-test testShiftingTickMintingPotion -vvv
+    */
+    function testShiftingTickMintingPotion() public {
+
+        // Minting at -26
+        _moveToTick(
+            -276325,
+            DAI_USDC_POOL_m
+        );
+        (,int24 tk,,,,,) = IUniswapV3Pool(DAI_USDC_POOL_m).slot0();
+        console.log(uint256(uint24(-tk)));
+
+        _mintPotion();
+
+        // // Minting at -22
+        // _moveToTick(
+        //     -276322,
+        //     DAI_USDC_POOL_m
+        // );
+        // (,tk,,,,,) = IUniswapV3Pool(DAI_USDC_POOL_m).slot0();
+        // console.log(uint256(uint24(-tk)));
+
+        // _mintPotion();
+
+        // // Minting at -24
+        // _moveToTick(
+        //     -276324,
+        //     DAI_USDC_POOL_m
+        // );
+        // (,tk,,,,,) = IUniswapV3Pool(DAI_USDC_POOL_m).slot0();
+        // console.log(uint256(uint24(-tk)));
+
+        // _mintPotion();
+
+        // // Minting at -25
+        // _moveToTick(
+        //     -276325,
+        //     DAI_USDC_POOL_m
+        // );
+        // (,tk,,,,,) = IUniswapV3Pool(DAI_USDC_POOL_m).slot0();
+        // console.log(uint256(uint24(-tk)));
+
+        // _mintPotion();
+
+        // Minting at -23
+        _moveToTick(
+            -276323,
+            DAI_USDC_POOL_m
+        );
+        (,tk,,,,,) = IUniswapV3Pool(DAI_USDC_POOL_m).slot0();
+        console.log(uint256(uint24(-tk)));
+
+        _mintPotion();
+    }
+
+    /*
+    * Test to see if minting fails if the tick isnt in range.
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testRevertBecauseOutOfRange -vvv
+    */
+    function testRevertBecauseOutOfRange() public { // Perfect
+        _moveToTick(
+            -276328,
+            DAI_USDC_POOL_m
+        ); 
+        _mintPotion();
+    }
+
+    /*
+    * Mint 10 Potions.
+    * Test compounding.
+    * Test claimingRewards.
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testCompoundingAndClaimingRewardsInPotion -vvv
+    forge test --fork-url=https://eth.llamarpc.com --match-test testShiftingTickMintingPotion -vvv
+    */
+    function testCompoundingAndClaimingRewardsInPotion() public { // Perfect
+        for(uint256 n; n<101; n++){
+            _mintPotion();
+        }
+        for(uint56 i; i<30; i++){
+            _generateFees();
+        }
+
+        _moveToTick(
+            -276322,
+            DAI_USDC_POOL_m
+        );
+        
+        blue.compound{value: 0}();
+        
+        _mintAcheron();
+        vm.startPrank(alice.addr);
+        for(uint256 a; a<101; a++){
+            uint256 id = 777 + a;
+            blue.claimReward(id);
+        }
+        vm.stopPrank();
+    }
+
+    /*
+    * Sending off xSKIRK
+    * Adding liquidity after Acheron & Potion mint.
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testMintingBothAcheronAndPotionThenAddingLiquidityOnMain -vvv
+    */
+    function testMintingBothAcheronAndPotionThenAddingLiquidityOnMain() public {
+        _mintAcheron();
+        _mintPotion();
+        uint256 xSkirkBalance = m_xSkirk.balanceOf(address(prog));
+        require(xSkirkBalance > 1200e18, "a");
+        (uint256 a0, uint256 a1) = prog.addd{value: 0}();
+        console.log("Amounts:",a0, a1);
+        console.log("Sum    :", (a0 + (a1 * 1e12)) / 1e18 );
+        console.log("Dust DAI:", IERC20(DAI_m).balanceOf(address(prog)));
+        console.log("Dust USD:", IERC20(USDC_m).balanceOf(address(prog)));
+        ( a0,  a1) = prog.add{value: 0}();
+        console.log("Amounts:",a0, a1);
+        console.log("Sum    :", (a0 + (a1 * 1e12)) / 1e18 );
+        console.log("Dust DAI:", IERC20(DAI_m).balanceOf(address(prog)));
+        console.log("Dust USD:", IERC20(USDC_m).balanceOf(address(prog)));
+    }
+
+    /*
+    * Minting 10 Potion & 10 Acheron.
+    * Adding progenitor aggregators L.
+    * Generating fees for both to be compounded.
+    * Minting all remaining Acheron & Potion.
+    * Claiming rebase rewards.
+
+    forge test --fork-url=https://rpc.mevblocker.io/fast --match-test testMintingAndCompoundingWhileHoldingxSkirk -vvv
+    */  
+    function testMintingAndCompoundingWhileHoldingxSkirk() public {
+        for(uint256 z; z<11; z++){
+            _mintAcheron();
+            _mintPotion();
+        }
+
+        // Generating Potion rewards to compound.
+        for(uint256 a; a<100; a++){
+            _generateFees();
+        }
+        uint256 rebaseAmount = 1000e18;
+        _mintxSkirk(alice.addr, rebaseAmount);
+        vm.startPrank(alice.addr);
+        m_acheron.rebase{value: 0}(rebaseAmount - 1, 1);
+        vm.stopPrank();
+
+        for(uint256 i; i<900; i++){
+            _mintAcheron();
+            _mintPotion();
+        }
+
+        // Adding progenitor aggregators L:
+        prog.addd{value: 0}();
+
+        uint256 lastId_Acheron = uint256(m_acheron.currentId());
+        uint256 lastId_Potion = uint256(blue.currentId());
+        require(lastId_Acheron == lastId_Potion, "b");
+
+        uint256 length = lastId_Acheron - 777;
+        uint256 index = 777;
+        vm.startPrank(alice.addr);
+        for(uint256 c; c<length; c++){
+            m_acheron.claimReward(index);
+            blue.claimReward(index);
+            index++;
+        }
+        vm.stopPrank();
+        console.log("Success");
+
+        console.log("Acheron xSkirk Dust:", m_xSkirk.balanceOf(address(m_acheron)));
+        console.log("Potion xSkirk Dust :", m_xSkirk.balanceOf(address(blue)));
+    }
+
+    function _mintAcheron() internal {
+        _mintxSkirk(alice.addr, 1000e18);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(m_acheron), 2**256 -1);
+        uint256 id = m_acheron.mint{value: 0}(false);
+        console.log(id);
+        vm.stopPrank();
+    }
+
+    function _mintPotion() internal {
+        _mintxSkirk(alice.addr, 1000e18);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(blue), 2**256 -1);
+        (uint256 a0, uint256 a1, uint256 r) = blue.mint();
+        vm.stopPrank();
+        uint256 sum = a0 + (a1 * 1e12);
+        console.log("SUM:", sum / 1e18);
+        console.log("Rem:", r);
+        console.log("Dst:", m_xSkirk.balanceOf(address(blue)));
+    }
+
+    function _moveToTick(
+        int24 tick,
+        address pool
+    ) internal {
+        uint160 sqrtPriceLimit = TickMath.getSqrtRatioAtTick(tick);
+        (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool).slot0();
+        // Could only fail if whales dont have enough liquidity.
+        if(sqrtP > sqrtPriceLimit){ // usdc In ~buy dai
+            _swap(
+                pool,
+                DAI_Whale_m,
+                0,
+                IERC20(DAI_m).balanceOf(DAI_Whale_m).toInt256(),
+                sqrtPriceLimit
+            );
+        } else {                    // dai In ~buy usdc
+            _swap(
+                pool,
+                UDSC_Whale_m,
+                1,
+                IERC20(USDC_m).balanceOf(UDSC_Whale_m).toInt256(),
+                sqrtPriceLimit
+            );
+        }
+    }
+
+    function _generateFees() internal {
+        _swap(
+            DAI_USDC_POOL_m,
+            UDSC_Whale_m,
+            0,
+            10_000_000e18,
+            56022770974786135785472         // 0.5 $
+        );
+        _swap(
+            DAI_USDC_POOL_m,
+            DAI_Whale_m,
+            1,
+            10_000_000e6,
+            177159557114295696228352        // 5 $
+        );
+    }
+
+    function _swap(
+        address pool,
+        address user,
+        uint8 dir,          // 0: Sell xSkirk, 1: Sell WETH
+        int256 amount,
+        uint160 sqrtP_Limit
+    ) internal returns(int256 a0, int256 a1){
+        (a0, a1) = IUniswapV3Pool(pool).swap(
+            user,
+            dir == 1 ? false : true,
+            amount,
+            sqrtP_Limit,
+            ""
+        );
+    }
+
+
+
+
+
+    /*
+    22569467038062028494
+    22569467038062028492
+    */
+
+
+
+
+
+    function uniswapV3SwapCallback(
+        int256 amount0Owed,
+        int256 amount1Owed,
+        bytes calldata
+    ) public virtual override {
+        
+        if (amount0Owed > 0){
+            vm.startPrank(DAI_Whale_m);
+            IERC20(DAI_m).transfer(msg.sender, uint256(amount0Owed));
+            vm.stopPrank();
+        }
+        if (amount1Owed > 0){
+            vm.startPrank(UDSC_Whale_m);
+            IERC20(USDC_m).transfer(msg.sender, uint256(amount1Owed));
+            vm.stopPrank();
+        }
+    }
+}
+
+
+/*
+    Overall tests that need to be done:
+
+    * Have rebased a lot and therefore have xSkirk to be claimed by users in the smart contract.
+    * Then perform mints + compounds.
+    * Claim the rewards afterwards to see if any xSkirk goes missing or the amount of Dust gets 2 large.
+
+    * Burning the first ID shenanigans.
+
+    * xSkirk getBounty needs to be once a day.
+*/

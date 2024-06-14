@@ -1,0 +1,384 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../../Methods.sol";
+
+contract Minting_Mainnet is Methods {
+
+    function setUp() public override virtual {
+        super.setUp();
+        vm.startPrank(DAI_Whale);
+        IERC20(DAI).approve(address(m_xSkirk), 2**256 -1);
+        vm.stopPrank();
+        m_acheron.initialize();
+    }
+
+    /// Whales: ///
+    address USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    address DAI = 0x6B175474E89094C44Da98b954EedeAC495271d0F;
+    address WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
+    address DAI_Whale = 0x517F9dD285e75b599234F7221227339478d0FcC8; // v2 pool maker/dai
+    address WETH_Wahle = 0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E; // 500_000 e18 weth !
+    address UDSC_Whale = 0x4B16c5dE96EB2117bBE5fd171E4d203624B014aa;
+
+    /*
+    * Testing main aggregator add() public function:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testMainAggregatorAdd -vvv
+    */
+    function testMainAggregatorAdd() public {
+        vm.startPrank(DAI_Whale);
+        IERC20(DAI).transfer(address(prog), 12e18);
+        vm.stopPrank();
+        (uint256 a0, uint256 a1) = prog.add{value: 0}();
+        console.log(a0, a1);
+        console.log(IERC20(DAI).balanceOf(address(prog)));
+        console.log(IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48).balanceOf(address(prog)));
+    }
+    
+    /* 569010 + 619351
+    * Testing pw system:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testingMainAggregatorPwSystem -vvv
+    */
+    function testingMainAggregatorPwSystem() public {
+        vm.startPrank(DAI_Whale);
+        IERC20(DAI).transfer(address(prog), 1_200_000e18);
+        require(IERC20(DAI).balanceOf(alice.addr) == 0, "DK");
+        require(IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48).balanceOf(alice.addr) == 0, "DK");
+        vm.stopPrank();
+        (uint256 a0, uint256 a1) = prog.add{value: 0}();
+        console.log(IERC20(DAI).balanceOf(address(prog)));
+        console.log(IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48).balanceOf(address(prog)));
+        console.log("amount deposited:", (a0 +(a1 * 1e12)) / 1e18);
+        int24 TL = -276326;
+        int24 TU = -276322;
+        bytes32 key = keccak256(abi.encodePacked(address(prog), TL, TU));
+        (uint128 liquidity,,,,) = IUniswapV3Pool(0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168).positions(key);
+        uint128 amount2Sum = 20_000;
+        uint128 targetAmount = (amount2Sum / 2) * 1e16;
+        vm.startPrank(alice.addr);
+        prog.withL("0x0c97058570d9670f438104f393c2581e872f34e35ecb500df0d1d61fe07b6435", 
+        0xaf0f11046e416c58c0e1359fa0affb08aee7742c1c9329a9b680683013b23e4a,
+        alice.addr,
+        liquidity - 1e17
+        );  // 5942409974218321052902   // 5942309974218321052902!
+        vm.stopPrank();
+        /*
+        [Return] 5942411830541499519429 [5.942e21], 874540033154587838220990795122938517634 [8.745e38], 877867227048351518273784413 [8.778e26], 0, 0
+        */
+        address pool = 0x5777d92f208679DB4b9778590Fa3CAB3aC9e2168;
+        require(pool > address(0x0));
+        require(targetAmount > 0);
+        vm.startPrank(address(prog));
+        // IUniswapV3Pool(pool).burn(TL, TU, 5942309974218321052902);
+        // IUniswapV3Pool(pool).collect(alice.addr, TL, TU, 2**128 - 1, 2**128 -1);
+
+        vm.stopPrank();
+
+        console.log(IERC20(DAI).balanceOf(alice.addr));
+        console.log(IERC20(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48).balanceOf(alice.addr));
+    }
+
+    /*
+    * Testing main aggregator with usdc only:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testMainAggregatorUsdcOnly -vvvv
+    */
+    function testMainAggregatorUsdcOnly() public {
+        uint256 usdcAmount = 9000;
+        vm.startPrank(UDSC_Whale);
+        IERC20(USDC).transfer(address(prog), usdcAmount * 1e6);
+        vm.stopPrank();
+        (uint256 a0, uint256 a1) = prog.add{value: 0}();
+        console.log(IERC20(DAI).balanceOf(address(prog)));
+        console.log(IERC20(USDC).balanceOf(address(prog)));
+        console.log("amount deposited:", (a0 +(a1 * 1e12)) / 1e18);
+    }
+
+    /*
+    * Testing main aggregator with usdc and dai together:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testMainAggregatorUsdcAndDai -vvvv
+    */
+    function testMainAggregatorUsdcAndDai() public {
+        uint256 usdcAmount = 1500;
+        uint256 daiAmount = 2300;
+        vm.startPrank(UDSC_Whale);
+        IERC20(USDC).transfer(address(prog), usdcAmount * 1e6);
+        vm.stopPrank();
+        vm.startPrank(DAI_Whale);
+        IERC20(DAI).transfer(address(prog), daiAmount * 1e18);
+        vm.stopPrank();
+        (uint256 a0, uint256 a1) = prog.add{value: 0}();
+        console.log(IERC20(DAI).balanceOf(address(prog)));
+        console.log(IERC20(USDC).balanceOf(address(prog)));
+        console.log("amount deposited:", (a0 +(a1 * 1e12)) / 1e18);
+        ( a0,  a1) = prog.add{value: 0}();
+        console.log(IERC20(DAI).balanceOf(address(prog)));
+        console.log(IERC20(USDC).balanceOf(address(prog)));
+        console.log("amount deposited:", (a0 +(a1 * 1e12)) / 1e18);
+    }
+
+    /*
+    * Initial minting after creation attempt:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testMintMainnetAfterDeployment -vvvv
+    
+    * Alice mints Acheron.
+    */
+    function testMintMainnetAfterDeployment() public {
+        _getxSkirk(alice.addr, 1000e18);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(m_acheron), 2**256 -1);
+        uint256 id = m_acheron.mint{value: 0}(true);
+        console.log(id);
+        vm.stopPrank();
+    }
+
+    /*
+    * Minting all acherons:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testMintAllAcherons -vvv
+
+    forge test --fork-url=https://ethereum-rpc.publicnode.com --match-test testMintAllAcherons -vvv
+    */
+    function testMintAllAcherons() public {
+        uint256 amountInDai = 1000e18 * 7001;
+        _getxSkirk(alice.addr, amountInDai);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(m_acheron), 2**256 -1);
+        for(uint256 i; i < 7001; i++){
+            uint256 id = m_acheron.mint{value: 0}(true);
+            console.log(id);
+        }
+        console.log(IERC20(WETH).balanceOf(pool_weth_xSkirk_mainnet));
+        vm.stopPrank();
+    }
+    /*
+    Price :             3747
+    WethWorth in DAI:   181
+    weth raw:           0.048
+    dai used:           186
+
+    186539718736887605792
+    186539004504777402200
+    */
+
+    /*
+    * Mint 50 Acherons.
+    * Swap x amount of times to get some fees to compound.
+    * Compound.
+
+
+    forge test --fork-url=https://ethereum-rpc.publicnode.com --match-test testMintingSwappingAndCompounding_Mainnet -vvv
+    */
+    function testMintingSwappingAndCompounding_Mainnet() public {
+        uint256 amountInDai = 1000e18 * 7001;
+        _getxSkirk(alice.addr, amountInDai);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(m_acheron), 2**256 -1);
+        for(uint256 i; i < 7001; i++){
+            m_acheron.mint{value: 0}(true);
+        }
+        vm.stopPrank();
+        _generateFees();
+
+        console.log("acheron balanc :", m_xSkirk.balanceOf(address(m_acheron)));
+
+        uint128 initialL = IUniswapV3Pool(pool_weth_xSkirk_mainnet).liquidity();
+
+        // int24 tl = 68000;
+        // int24 tu = 99000;
+        // vm.startPrank(address(m_acheron));
+        // IUniswapV3Pool(pool_weth_xSkirk_mainnet).burn(tl, tu, 0);
+        // IUniswapV3Pool(pool_weth_xSkirk_mainnet).collect(address(0x3a3a), tl, tu, 2**128 -1, 2**128 -1);
+        // uint256 wethAquired = IERC20(WETH).balanceOf(address(0x3a3a));
+        // uint256 xSkirkAquired = IERC20(m_xSkirk).balanceOf(address(0x3a3a));
+        // vm.stopPrank();
+        // console.log("success");
+        // console.log("Weth aquired:", wethAquired);
+        // console.log("xSkirk aquir:", xSkirkAquired); // 80 dollars ish in fees accumulated in total.
+
+        vm.startPrank(alice.addr);
+        uint256 gained = m_acheron.compound{value: 0}(true);
+        console.log("reward", gained);
+        
+        uint128 afterL = IUniswapV3Pool(pool_weth_xSkirk_mainnet).liquidity();
+
+        console.log("old L :", initialL);
+        console.log("new L :", afterL);
+        console.log("alice xskirk b :", m_xSkirk.balanceOf(alice.addr));
+
+        uint256 ra = m_acheron.calculateReward(777);
+        console.log("Each reward am :", ra);
+
+        for(uint256 a; a < 7001; a++){
+            uint256 id = 777 + a;
+            m_acheron.claimReward(id);
+        }
+
+        console.log("alice xskirk a :", m_xSkirk.balanceOf(alice.addr));
+
+        uint256 burnInc =  m_acheron.burnIncentive();
+
+        console.log("burn incentive :", burnInc);
+
+        m_acheron.burnAcheron(burnInc, 777);
+
+        console.log("alice xskirk c :", m_xSkirk.balanceOf(alice.addr));
+
+        console.log("acheron balanc :", m_xSkirk.balanceOf(address(m_acheron)));
+        
+        for(uint z = 778; z < 7001; z++){
+            uint256 r = m_acheron.calculateReward(z);
+            if(r > 0){
+                console.log("at:", z);
+                console.log("r");
+            }
+        }
+        console.log("burn incentive :", m_acheron.burnIncentive());
+
+        vm.stopPrank();
+    }
+
+    /*
+    forge test --fork-url=https://ethereum-rpc.publicnode.com --match-test testSomethingMathWise -vvv
+    */
+    function testSomethingMathWise() public view{
+        uint256 rate = _getErInBase18(1252707241875239577579421696, 18, 18);
+        console.log(1e36 / rate);
+    }
+
+    /*
+    * Minting 1 Nft
+    * Making fees, compounding, rebasing.
+
+    forge test --fork-url=https://ethereum-rpc.publicnode.com --match-test testRebaseMechanismWithOne -vvv
+    */
+    function testRebaseMechanismWithOne() public {
+        uint256 amountInDai = 1000e18;
+        _getxSkirk(alice.addr, amountInDai);
+        vm.startPrank(alice.addr);
+        m_xSkirk.approve(address(m_acheron), 2**256 -1);
+            m_acheron.mint{value: 0}(true);
+        vm.stopPrank();
+
+        for(uint256 i; i < 300; i++){
+            _generateFees();
+        }
+
+        console.log("acheron balanc :", m_xSkirk.balanceOf(address(m_acheron)));
+
+        vm.startPrank(alice.addr);
+        uint256 gained = m_acheron.compound{value: 0}(true);
+        console.log("reward         :", gained);
+
+        console.log("acheron balanc :", m_xSkirk.balanceOf(address(m_acheron)));
+        
+        console.log("amount         :", m_acheron.calculateReward(777));
+
+        vm.stopPrank();
+    }
+
+    // Getting special hash to claim liquidity:
+    function _feeHash() internal view returns(bytes32){
+        int24 tl = 68000;
+        int24 tu = 99000;
+        bytes32 positionHash = keccak256(abi.encodePacked(address(m_acheron), tl, tu));
+        return positionHash;
+    }
+
+    function _generateFees() internal {
+        // (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_weth_xSkirk_mainnet).slot0();
+        uint160 upperPriceLimit = _getQ96(9000e18, 18, 18);
+        uint160 lowerPriceLimit = _getQ96(3700e18, 18, 18);
+        uint256 surplusAmount = 100_000e18;
+        _swap(
+            pool_weth_xSkirk_mainnet,
+            WETH_Wahle,
+            1,
+            SafeCast.toInt256(surplusAmount),
+            upperPriceLimit
+        );
+        _swap(
+            pool_weth_xSkirk_mainnet,
+            DAI_Whale,
+            0,
+            SafeCast.toInt256(surplusAmount),
+            lowerPriceLimit
+        );
+    }
+
+    function _swap(
+        address pool,
+        address user,
+        uint8 dir,          // 0: Sell xSkirk, 1: Sell WETH
+        int256 amount,
+        uint160 sqrtP_Limit
+    ) internal returns(int256 a0, int256 a1){
+        (a0, a1) = IUniswapV3Pool(pool).swap(
+            user,
+            dir == 1 ? false : true,
+            amount,
+            sqrtP_Limit,
+            ""
+        );
+    }
+
+
+
+    /*
+    ETH spot price: 3688
+    0.048699199297427545 ETH -> 179 DAI
+    185 
+
+    */
+
+    event xSkirkReceived(address user, uint256 amount);
+    /// Layered method:
+    function _getxSkirk(
+        address user,
+        uint256 amount
+    ) internal{
+        vm.startPrank(DAI_Whale);
+        m_xSkirk.exactSkirkOut(amount);
+        m_xSkirk.transfer(user, amount);
+        vm.stopPrank();
+        emit xSkirkReceived(user, amount);
+    }
+
+
+    // Swap callbacks for mainnet:
+    function uniswapV3SwapCallback(
+        int256 _amount0Owed,
+        int256 _amount1Owed,
+        bytes calldata
+    ) public override virtual {
+        uint256 amount0Owed = _amount0Owed > 0 ? SafeCast.toUint256(_amount0Owed) : 0;
+        uint256 amount1Owed = _amount1Owed > 0 ? SafeCast.toUint256(_amount1Owed) : 0;
+        // No security checks, since this is meant as a test.
+        address token0 = IUniswapV3Pool(msg.sender).token0();
+        address token1 = IUniswapV3Pool(msg.sender).token1();
+        
+        if(token1 == address(m_xSkirk) && amount1Owed > 0){
+            uint256 amount2Pay = uint256(amount1Owed);
+            _getxSkirk(address(0xdead), amount2Pay);
+        }
+
+        if (amount0Owed > 0){
+            uint256 amount2Pay = uint256(amount0Owed);
+            if(token0 == WETH){
+                vm.startPrank(WETH_Wahle);
+                IERC20(WETH).transfer(msg.sender, amount2Pay);
+                vm.stopPrank();
+            }
+        }
+        if (amount1Owed > 0){
+            uint256 amount2Pay = uint256(amount1Owed);
+            if(token1 == WETH){
+                vm.startPrank(WETH_Wahle);
+                IERC20(WETH).transfer(msg.sender, amount2Pay);
+                vm.stopPrank();
+            } else if(token1 == address(m_xSkirk)){
+                vm.startPrank(address(0xdead));
+                IERC20(address(m_xSkirk)).transfer(msg.sender, amount2Pay);
+                vm.stopPrank();
+            }
+        }
+    }
+}

@@ -54,12 +54,13 @@ decimals_wbtc = 8  # WBTC has 8 decimals
 decimals_dai = 18  # DAI has 18 decimals
 18
 # Calculate the price of WBTC in terms of DAI
-price_of_wbtc_in_dai = sqrt_price_x96_to_price(8536811594165975124744711716116, 18, 18)
-
+price_of_wbtc_in_dai = sqrt_price_x96_to_price(2086370190164145635068910573146, 8, 6)
+                                               
 print(f"The price of WBTC in terms of DAI is: {price_of_wbtc_in_dai:.18f} DAI")
 
-print("SqrtP:", price_to_sqrt_price_x96(20000, 18, 18))
+print("SqrtP:", price_to_sqrt_price_x96(3000, 18, 18))
 
+998000056223549559762
 
 # 10k sqrtP for tick: 792281625142643375935439503360000000          tick: 322378
 # 200k sqrtP for tick: 3543191142285914282308094308233773056        tick: 352336

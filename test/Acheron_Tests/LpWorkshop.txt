@@ -1,0 +1,245 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../Methods.sol";
+
+contract LpWorkShop is Methods {
+
+    using FullMath for uint256;
+    /*
+    * Gets accurate L amounts for given value to deposit!
+    */
+    event Logger(uint256);
+    function testGettingAmounts() public {
+        uint256 amount2Spend = 10e18;
+        uint256 startingSpotPriceWETH_SKIRK = 800e18;     // WETH/SKIRK sqrtPrice.
+        for(uint256 i; i<20_000; i++){
+            uint256 virtualSpotPriceWETH_SKIRK = startingSpotPriceWETH_SKIRK + (1e18 * i);
+            uint256 wethPrice = virtualSpotPriceWETH_SKIRK + (virtualSpotPriceWETH_SKIRK / 10);
+            uint160 virtualSqrtPrice = _getQ96(virtualSpotPriceWETH_SKIRK, 18, 18);
+            emit Logger(123);
+            uint128 v_liquidity = _findLiquidity(amount2Spend, wethPrice, virtualSqrtPrice);
+            // Amount logs:
+            uint256 a0;
+            uint256 a1;
+            (a0, a1) = LiquidityMath.getAmountsForLiquidity(virtualSqrtPrice, tl_SqrtP, tu_SqrtP, v_liquidity);
+            uint256 sum = _wethToDai(wethPrice, a0) + a1;
+            uint256 targetAmount = FullMath.mulDiv(amount2Spend, 3, 100);
+            if(sum < targetAmount){
+                console.log("Err at:", virtualSpotPriceWETH_SKIRK / 1e18, v_liquidity);
+                console.log("SUM     :", sum);
+                console.log("Amounts :", a0, a1);
+                break;
+            }
+            console.log("PRICE   :", virtualSpotPriceWETH_SKIRK / 1e18);
+            console.log("SUM     :", sum);
+            console.log("Amounts :", a0, a1);
+        }
+    }
+
+    ///@notice Liquidity function
+    function _getLiquidityForAmounts() internal pure returns(uint256){
+
+    }
+    /*
+    forge test --fork-url=https://eth.llamarpc.com --match-test testReadInverseQ96 -vvvv
+    forge test --fork-url=https://eth.drpc.org --match-test testReadInverseQ96 -vvvv
+    */
+    function testReadInverseQ96() public view {
+        uint256 price = _wethUsdc();
+        console.log(price / 1e18);
+        uint256 p = _usdtweth();
+        console.log(p / 1e18);
+    }
+
+    address immutable internal USDT_WETH = 0x11b815efB8f581194ae79006d24E0d814B7697F6;
+    function _usdtweth() internal view returns(uint256){
+        uint256 maxTime = 1800;
+        uint32[] memory time = new uint32[](2);
+        time[0] = uint32(maxTime);
+        time[1] = 0;
+        (int56[] memory ticks,) = IUniswapV3Pool(USDT_WETH).observe(time);
+        int24 spotTick = int24((ticks[1] - ticks[0]) / int56(uint56(maxTime)));
+        uint256 er = _getErInBase18(TickMath.getSqrtRatioAtTick(spotTick), 18, 6);
+		return er;
+    }
+
+    address immutable internal USDC_WETH = 0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640;
+    function _wethUsdc() internal view returns(uint256){
+        uint256 maxTime = 1800;
+        uint32[] memory time = new uint32[](2);
+        time[0] = uint32(maxTime);
+        time[1] = 0;
+        (int56[] memory ticks,) = IUniswapV3Pool(USDC_WETH).observe(time);
+        int24 spotTick = int24((ticks[1] - ticks[0]) / int56(uint56(maxTime)));
+        // uint160 p = _getInverseQ96_(TickMath.getSqrtRatioAtTick(spotTick), 6, 18);
+        uint256 er = _getErInBase18(TickMath.getSqrtRatioAtTick(spotTick), 6, 18);
+		return 1e36 / er;
+        // uint256 factor = uint256(sqrtP) * uint256(sqrtP);
+        // // reverting root,  wbtcDecimal, q96,   for base e18.
+        // return (factor.mulDiv(10**8, 1 << 192)) * 10 **12;
+    }
+    /// @notice Uniswap V3 twap function from WBTC/USDC pool
+    // function _wethUsdc() internal view returns(uint256){
+    //     uint256 maxTime = 1800;
+    //     uint32[] memory time = new uint32[](2);
+    //     time[0] = uint32(maxTime);
+    //     time[1] = 0;
+    //     (int56[] memory ticks,) = IUniswapV3Pool(USDC_WETH).observe(time);
+    //     int24 spotTick = int24((ticks[1] - ticks[0]) / int56(uint56(maxTime)));
+    //     uint160 p = _getInverseQ96_(TickMath.getSqrtRatioAtTick(spotTick), 6, 18);
+    //     uint256 er = _getErInBase18(p, 18, 6);
+	// 	return er;
+    //     // uint256 factor = uint256(sqrtP) * uint256(sqrtP);
+    //     // // reverting root,  wbtcDecimal, q96,   for base e18.
+    //     // return (factor.mulDiv(10**8, 1 << 192)) * 10 **12;
+    // }
+
+    function _getInverseQ96_(uint160 sqrtP, uint256 d0, uint256 d1) internal view returns(uint160){
+        uint256 erInBase18 = _getErInBase18(sqrtP, d0, d1);         // RAW ER so 6400e18
+        uint256 inverse = 1e36 / erInBase18;                        // .0000156250000000000 Raw inverse ER in base 1e18
+        if(d0 == d1){
+            uint256 _q96_ = q96.mulDiv(sqrtu(inverse), sqrtu(1e18));
+            return SafeCast.toUint160(_q96_);
+        }
+        // Inversing decimals:
+        inverse = d0 > d1 ? inverse * 10**(d0 - d1) : inverse / 10**(d1 - d0);  // Shifting to match correct decimal exchange
+        uint256 _q96 = q96.mulDiv(sqrtu(inverse), sqrtu(1e18));
+        return SafeCast.toUint160(_q96);
+    }
+
+    uint160 immutable internal lowerGap = 2382120897181660527828393787392;
+    uint160 immutable internal upperGap = 11203153538136334211227743944704;
+    ///@notice 900 in q96.
+    uint160 immutable internal tl_SqrtP = 2373597069249974917302093533021;
+
+    ///@notice 15k in q96.
+    uint160 immutable internal tu_SqrtP = 11204554194957228397824552468480;
+
+    function _findLiquidity(
+        uint256 amount2Spend,
+        uint256 price,
+        uint160 sqrtP_n
+    ) internal returns(uint128){
+        if(sqrtP_n < lowerGap){ // P_n < 925, no iteration!
+            uint256 wethAmount = _daiToWeth(price, amount2Spend - 1e18);
+            uint128 _L = LiquidityMath.getLiquidityForAmounts(sqrtP_n, tl_SqrtP, tu_SqrtP, wethAmount, 1e18);
+            return _L;
+        } else if(sqrtP_n >= upperGap){
+            uint256 wethAmount = _daiToWeth(price, 1e18);   // Rest in xSkirk.
+            uint128 _L = LiquidityMath.getLiquidityForAmounts(sqrtP_n, tl_SqrtP, tu_SqrtP, wethAmount, amount2Spend - 1e18);
+            return _L;
+        }
+
+        // Assuming its in-between:
+        uint256 MEDIAN = 10_000e18; // 10_900e18 accurate median.
+        uint256 p_n = _getErInBase18(sqrtP_n, 18, 18);
+        emit Logger(p_n);
+        if(p_n > MEDIAN){
+            return _UMS(amount2Spend, price, sqrtP_n);
+        } else {    // If less or equal we use _LMS:
+            return _LMS(amount2Spend, price, sqrtP_n);
+        }
+    }
+
+    function _UMS(
+        uint256 amount2Spend,
+        uint256 price,
+        uint160 sqrtP_n
+    ) internal pure returns(uint128){
+        // CACHE:
+        uint256 totalAmount = amount2Spend;                            // 200e18
+        uint256 target = amount2Spend - ((amount2Spend * 3) / 100);    // 194e18
+        uint256 wethPrice = price;
+        // Starting values:
+        uint256 _a0 = 1e18;         //Irrelevant since here xSKIRK is favoured.
+        uint256 _a1 = target;                                           // 194e18 on first iteration.
+        uint256 diff;
+        // Stop the loop:
+        uint8 limit;
+
+        // Starting loop:
+        while(limit != 9){
+            uint128 _L = LiquidityMath.getLiquidityForAmounts(sqrtP_n, tl_SqrtP, tu_SqrtP, _a0, _a1);
+            (uint256 a0, uint256 a1) = LiquidityMath.getAmountsForLiquidity(sqrtP_n, tl_SqrtP, tu_SqrtP, _L);
+            uint256 value = _wethToDai(wethPrice, a0);
+            uint256 sum = value + a1;
+
+            // Checking if ratios satisfy to break:
+            if(sum >= target && totalAmount > sum){
+                _a0 = a0;
+                _a1 = a1;
+                break;
+            } else if(sum > target){        // Spread exceeds budget:
+                // Check by how much this L overpays:
+                diff = sum - target;
+
+                _a0 = a0;                   // Again irrelevant
+                // Large diff: reduces xSkirk amount by half the difference.
+                // Low diff  : reduces xSkirk by exactly said difference.
+                _a1 = diff > 4e18 ? a1 - (diff/2) : _a1 - diff;
+
+            } else if(sum < target){        // Spread is bellow min deposit
+                // Checks by how much this L is missing target.
+                diff = target - sum;
+                _a0 = a0;                   // u know
+                _a1 = _a1 + diff;           // Here we just add the difference regardless.
+            }
+            // emit LowerM(_price, a0, a1, _a0, _a1, diff, sum);
+            limit++;
+        }
+        return(LiquidityMath.getLiquidityForAmounts(sqrtP_n, tl_SqrtP, tu_SqrtP, _a0, _a1));
+    }
+
+    event LowerM(uint256 Price, uint256 a0, uint256 a1, uint256 _a0, uint256 _a1, uint256 diff, uint256 sum);
+    function _LMS(
+        uint256 amount2Spend,
+        uint256 price,
+        uint160 sqrtP_n
+    ) internal pure returns(uint128){
+        // CACHE:
+        uint256 totalAmount = amount2Spend;
+        uint256 target = amount2Spend - ((amount2Spend * 3) / 100);
+        uint256 wethPrice = price;
+        // Starting values:
+        uint256 _a0 = _daiToWeth(wethPrice, target);       // 200 dai worth in WETH at the current "price". 
+        uint256 _a1 = totalAmount;                                      //Irrelevant since here WETH is favoured.      
+        uint256 diff;
+        // Stop the loop:
+        uint8 limit;
+        
+        while(limit != 9){
+            uint128 _L = LiquidityMath.getLiquidityForAmounts(sqrtP_n, tl_SqrtP, tu_SqrtP, _a0, _a1);
+            (uint256 a0, uint256 a1) = LiquidityMath.getAmountsForLiquidity(sqrtP_n, tl_SqrtP, tu_SqrtP, _L);
+            uint256 value = _wethToDai(wethPrice, a0);
+            uint256 sum = value + a1;
+            
+            // Checking if ratios satisfy to break:
+            if(sum >= target && totalAmount > sum){
+                _a0 = a0;
+                _a1 = a1;
+                break;
+            } else if(sum > target){        // Spread exceeds budget:
+                diff = sum - target;
+                _a1 = a1;                   // Irrelevant
+                _a0 = diff > 4e18 ? _a0 - (_daiToWeth(wethPrice, diff) / 2) : _a0 - _daiToWeth(wethPrice, diff);
+            } else if(sum < target){
+                diff = target - sum;
+                _a1 = _a1 + diff;           
+                _a0 = diff > 1e18 ? _a0 + (_daiToWeth(wethPrice, diff) / 2) : _a0 = _a0 + _daiToWeth(wethPrice, diff);
+            }
+            limit++;
+            }
+            return (LiquidityMath.getLiquidityForAmounts(sqrtP_n, tl_SqrtP, tu_SqrtP, _a0, _a1));
+    }
+
+    // ///@notice Returns DAI exchangeRate for a given wethAmount.
+    // function _wethToDai(uint256 _wethPrice, uint256 _wethAmount) internal pure returns (uint256 daiER) {
+    //     daiER = (_wethPrice * _wethAmount) / 1e18;
+    // }
+
+    // ///@notice Returns WETH exchangeRate for a given daiAmount.
+    // function _daiToWeth(uint256 _wethPrice, uint256 _daiAmount) internal pure returns(uint256){
+    //     return (_daiAmount * 1e18) / _wethPrice;
+    // }
+}

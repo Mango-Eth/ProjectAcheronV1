@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.19;
+
+import "../../Methods.sol";
+
+contract ChainlinkPriceFeed is Methods {
+    
+    /*
+    * Read data from mainnet:
+    forge test --fork-url=https://eth.llamarpc.com --match-test testChainlinkPriceFeedRead -vvvv
+    */
+    // function testChainlinkPriceFeedRead() public {
+    //     uint256 price = oracle.getWethPrice_Chainlink(); // works, no need for further testing.
+    //     console.log("Mainnet ETH price:", price);
+    // }
+
+    
+}

@@ -1,0 +1,337 @@
+// SPDX-License-Identifier: Built by Mango
+pragma solidity ^0.8.20;
+
+import "../Methods.sol";
+
+contract Compounding is Methods {
+
+    // /*
+    // * As a sanity check, this test will mint acherons over each possible price point.
+    // */
+    // function testMintAcheronInAllRangesCOMP() public {
+    //     uint256 amountOfSkirk = 200_000 * 1000e18;
+    //     _mintSkirk(amountOfSkirk, alice.addr);
+    //     vm.startPrank(alice.addr);
+    //     xSKIRK.approve(address(acheron), 2**256-1);
+    //     vm.stopPrank();
+
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint160 inverseQ96 = _getQ96(1e36/spotPrice, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 balanceProgenitorBefore = xSKIRK.balanceOf(address(0xaaaaaaa));
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+    //         vm.startPrank(alice.addr);
+    //         (,a0, a1, remaining) = acheron._mint_{value: 0}();
+    //         vm.stopPrank();
+    //         uint256 balanceProgenitorAfter = xSKIRK.balanceOf(address(0xaaaaaaa));
+    //         uint256 amountSpent = 1000e18 - (balanceProgenitorAfter - balanceProgenitorBefore);
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("RAw        :", amountSpent);
+    //         console.log("t0         :", a0,        "t1:", a1);
+    //     }
+    // }
+ 
+    // /*
+    // * Testing all possible price ranges.
+    // * While compounding only WETH amount.
+    // * The amount to compound in this test is the exact amount passed but in weth.
+    // -> In cases where the lp deposit should fail. Specially in positions that require only xSkirk.
+    // A new lp is calculated in _handleSwap. This is due to it accounting for the possible loss from swapping & wrapping.
+    // */
+    // function testOnlyCompoundWethAllRangesCOMP() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+    
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint160 inverseQ96 = _getQ96(1e36/spotPrice, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 7e18;   // 10 cents worth of WETH being compounded.
+    //         uint256 wethAmount = _daiToWeth(spotPrice, dollarValue);
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+    //         vm.startPrank(alice.addr);
+    //         weth.mint(wethAmount);
+    //         weth.approve(address(acheron), wethAmount);
+    //         (remaining, a0, a1) = acheron._compound_(wethAmount, 0, dollarValue);
+    //         vm.stopPrank();
+    //         uint256 skirkAfter = xSKIRK.balanceOf(address(acheron));
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("Residue:", skirkAfter);
+    //         // if(sum < dollarValue - ((dollarValue * 15)/100)){
+    //         //     console.log("Residue here:", spotPrice);
+    //         //     break;
+    //         // }
+    //         if(skirkAfter > 0){
+    //             console.log("Residue here:", spotPrice);
+    //             break;
+    //         }
+    //     }
+    //     }
+
+    // /*
+    // * This will compound only xSkirkAmounts all over the possible price ranges.
+    // * Since xSkirk compounding is close to real lp amount, new Lps shouldnt be calculated as often.
+    // * Unless a very bad trade is taken.
+    // */
+    // function testOnlyCompoundSkirkAllRangesCOMP() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint160 inverseQ96 = _getQ96(1e36/spotPrice, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 7e18;   // 10 cents worth of WETH being compounded.
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+
+    //         uint256 skirkAmount = dollarValue;
+    //         // uint256 wethBefore = weth.balanceOf(address(acheron));
+    //         _mintSkirk(skirkAmount, alice.addr);
+    //         vm.startPrank(alice.addr);
+    //         xSKIRK.approve(address(acheron), skirkAmount);
+    //         (remaining, a0, a1) = acheron._compound_(0, skirkAmount, dollarValue);
+    //         vm.stopPrank();
+    //         // uint256 wethAfter = weth.balanceOf(address(acheron));
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("Entire sum :", sum + remaining);
+    //         // console.log("Dust", wethAfter - wethBefore);
+    //         if(sum < 10e18 - ((10e18 * 15)/100)){
+    //             console.log("broke here:", spotPrice);
+    //             break;
+    //         }
+    //     }
+    // }
+
+    // /*
+    // * Compounding both WETH and xSkirk. With slight surplus of WETH and little xSkirk.
+    // */
+    // function testOnlyCompoundSkirkAndWethAllRangesWETHCOMP() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 7e18;   // 10 cents worth of WETH being compounded.
+    //         uint256 wethAmount = _daiToWeth(spotPrice, (dollarValue * 2));
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+            
+    //         uint256 skirkAmount = 3e15;
+    //         _mintSkirk(skirkAmount, alice.addr);
+    //         // uint256 xSkirkRemainingBefore = weth.balanceOf(address(acheron));
+    //         vm.startPrank(alice.addr);
+    //         weth.mint(wethAmount);
+    //         weth.approve(address(acheron), wethAmount);
+    //         xSKIRK.approve(address(acheron), skirkAmount);
+    //         //Sending wethAmount in worth of dollarValue, sending 3e15 xSkirkk(dust) and requesting dollarValue
+    //         (remaining, a0, a1) = acheron._compound_(wethAmount, skirkAmount, dollarValue);
+    //         vm.stopPrank();
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("Remaining :", remaining);
+    //         // uint256 xSkirkRemainingAfter = weth.balanceOf(address(acheron));
+    //         // console.log("Dust weth:", xSkirkRemainingAfter - xSkirkRemainingBefore);
+    //     }
+    // }
+
+    // /*
+    // * Compounding weth and xSkirk, with more xSkirk than weth.
+    // */
+    // function testOnlyCompoundSkirkAndWethAllRangesSKIRKCOMP() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 7e18;   // 10 cents worth of WETH being compounded.
+    //         uint256 wethAmount = _daiToWeth(spotPrice, (dollarValue / 100));
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+            
+    //         uint256 skirkAmount = 10e18;
+    //         _mintSkirk(skirkAmount, alice.addr);
+    //         // uint256 xSkirkRemainingBefore = weth.balanceOf(address(acheron));
+    //         vm.startPrank(alice.addr);
+    //         weth.mint(wethAmount);
+    //         weth.approve(address(acheron), wethAmount);
+    //         xSKIRK.approve(address(acheron), skirkAmount);
+    //         //Sending wethAmount in worth of dollarValue, sending 3e15 xSkirkk(dust) and requesting dollarValue
+    //         (remaining, a0, a1) = acheron._compound_(wethAmount, skirkAmount, dollarValue);
+    //         vm.stopPrank();
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("Remaining :", remaining);
+    //         // uint256 xSkirkRemainingAfter = weth.balanceOf(address(acheron));
+    //         // console.log("Dust weth:", xSkirkRemainingAfter - xSkirkRemainingBefore);
+    //         if(sum < dollarValue - ((dollarValue * 15) / 100)){
+    //             console.log("Broke at:", spotPrice/1e18);
+    //             break;
+    //         }
+    //     }
+    // }
+
+    // /*
+    // * Compounding excessive amounts of SKIRK and WETH, to see if we get somewhat of the right amounts 
+    // * back via the remaining. 
+    // */
+    // function testOnlyCompoundSkirkAndWethAllRangesSURPLUSCOMP() public {
+    //     uint256 startingPriceBeforeLp = 800e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     for(uint256 i = 1; i<22_000; i++){
+    //         uint256 spotPrice = startingPriceBeforeLp + (i * 1e18);
+    //         uint256 inverse = 1e36/spotPrice;
+    //         uint160 inverseQ96 = _getQ96(inverse, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         if(sqrtP != inverseQ96){
+    //         _shiftDAI_WETH_POOL(inverseQ96);
+    //         _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 dollarValue = 7e18;   // 10 cents worth of WETH being compounded.
+    //         uint256 wethAmount = _daiToWeth(spotPrice, (dollarValue * 3));    // 21 dollars in weth
+    //         uint256 a0;
+    //         uint256 a1;
+    //         uint256 remaining;
+            
+    //         uint256 skirkAmount = 1e16;                                       // 100 dollars in xSkirk, only need to deposit  7 dollars tho.
+    //         _mintSkirk(skirkAmount, alice.addr);
+    //         // uint256 xSkirkRemainingBefore = weth.balanceOf(address(acheron));
+    //         vm.startPrank(alice.addr);
+    //         weth.mint(wethAmount);
+    //         weth.approve(address(acheron), wethAmount);
+    //         xSKIRK.approve(address(acheron), skirkAmount);
+    //         //Sending wethAmount in worth of dollarValue, sending 3e15 xSkirkk(dust) and requesting dollarValue
+    //         (remaining, a0, a1) = acheron._compound_(wethAmount, skirkAmount, dollarValue);
+    //         vm.stopPrank();
+    //         uint256 sum = _wethToDai(spotPrice, a0) + a1;          
+    //         console.log("Virtual Sum:", sum, "At price:", (spotPrice / 1e18));
+    //         console.log("Remaining :", remaining / 1e18);
+    //         // uint256 xSkirkRemainingAfter = weth.balanceOf(address(acheron));
+    //         // console.log("Dust weth:", xSkirkRemainingAfter - xSkirkRemainingBefore);
+    //         // if(sum < dollarValue - ((dollarValue * 15) / 100)){
+    //         //     console.log("Broke at:", spotPrice/1e18);
+    //         //     break;
+    //         // }
+    //         if(remaining / 1e18 < 11){  // 60 = 85 5 = 7.5
+    //             console.log("Broke at:", spotPrice/1e18);
+    //             break;
+    //         }
+    //     }
+    // }
+
+    /*
+    * Regular compound function!!
+    * Must have enough fees to succeed:
+    */
+    // function testActualCompoundWithV3Fees() public {
+    //     uint256 startingPriceBeforeLp = 3000e18;
+    //     uint256 inverse_start = 1e36/startingPriceBeforeLp;
+    //     uint160 inverseQ96_start = _getQ96(inverse_start, 18, 18);
+    //     _shiftDAI_WETH_POOL(inverseQ96_start);
+    //     _balanceWeth_xSkirk_Pool();
+
+    //     _mintAcheron(alice.addr);
+    //     _mintAcheron(alice.addr);
+    //     _mintAcheron(alice.addr);
+    //     _mintAcheron(alice.addr);
+
+    //     uint256 newPrice = 1_000_000e18;
+    //     uint160 inveseNewPrice = _getQ96(1e36/newPrice, 18, 18);
+
+    //     for(uint256 c; c < 22_000; c++){
+    //         for(uint256 i; i < 25; i++){    // approx 48 dollars in fees.
+    //             _shiftDAI_WETH_POOL(inveseNewPrice);
+    //             _balanceWeth_xSkirk_Pool();
+        
+    //             _shiftDAI_WETH_POOL(inverseQ96_start);
+    //             _balanceWeth_xSkirk_Pool();
+    //         }
+    //         uint256 startingPrice = 800e18;
+    //         uint256 virtualPrice = startingPrice + (c * 1e18);
+    //         uint160 sqrtPriceInversedLayerd = _getQ96(1e36 /startingPrice, 18, 18);
+    //         (uint160 sqrtP,,,,,,) = IUniswapV3Pool(pool_dai_weth).slot0();
+    //         uint160 regularFixedPoint = _getInverseQ96(sqrtP, 18, 18);
+    //         // if(regularFixedPoint != )
+    //         vm.startPrank(alice.addr);
+    //         (uint256 amountReceived, uint256 a0, uint256 a1) = acheron.compound();
+    //         uint256 amountCompounded = _wethToDai(3000e18, a0) + a1;
+    //         uint256 sum = (amountCompounded * 330)/ 100;
+    //         console.log("Sum     :", sum / 1e18);
+    //         console.log("Approx  :", ((sum * 5) / 100) / 1e18);
+    //         console.log("Received:", amountReceived / 1e18);
+    //         vm.stopPrank();
+    //     }
+    // }
+}
+/*
+a0: 3615037237890049 a1:    26512145584936268699
+    2985793530731016        5402615936212350485
+    629243707159033
+    4244280945049081
+
+                    : 
+    Skirk Remaining : 25836071021607375337
+    SUm             : 37357257991810956797
+    amount2Comp     : 11207177397543287039
+    sum - amount    : 26150080594267669758
+
+*/
